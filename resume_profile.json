@@ -1,0 +1,131 @@
+{
+  "name": "Adithya NG",
+  "contact": {
+    "email": "adithyanandi099@gmail.com",
+    "phone": "+91 6362223700",
+    "github": "https://github.com/Adithya2310",
+    "linkedin": "https://www.linkedin.com/in/adithya-ng-baba34226",
+    "x": "https://x.com/_Adithya_n_g"
+  },
+  "skills": {
+    "languages": ["C#", "C", "C++", "Java", "Python", "TypeScript", "JavaScript", "SQL"],
+    "technologies_tools": [
+      ".NET",
+      "ReactJS",
+      "NextJS",
+      "Playwright",
+      "Agentic AI",
+      "Multi-Agent Systems",
+      "LLM Integration",
+      "GitHub MCP Server",
+      "Atlassian MCP",
+      "Figma MCP",
+      "Claude Code",
+      "Copilot AI Coding Agents",
+      "GitHub Actions (CI/CD)",
+      "PostgreSQL",
+      "SQL Server"
+    ]
+  },
+  "work_experience": [
+    {
+      "company": "Insight Software",
+      "title": "Associate Software Engineer",
+      "start_date": "2024-02",
+      "end_date": "2026-07",
+      "bullets": [
+        "Integrated GitHub MCP server, Atlassian MCP server, and Figma MCP server, architecting an autonomous design-to-code agent with Claude Code and Copilot that reduced feature development cycles from 1 month to 1 week.",
+        "Engineered an AI-powered mapping engine for Source Connect UC Mapping, replacing legacy fuzzy logic and increasing data mapping accuracy by >80%.",
+        "Architected scalable real-time CDC monitoring background service with automated alerting, ensuring continuous telemetry for high-throughput enterprise data load jobs.",
+        "Expanded enterprise data integration by designing and shipping full support for Oracle data sources (Oracle InforLN and Oracle NetSuite) within the management console.",
+        "Built the entire UI automation framework from scratch using Playwright and integrated it into GitHub Actions CI/CD pipelines, reducing manual QA cycles from 3 weeks to 2 days.",
+        "Reduced unit test execution time from 6 hours to 1 minute by separating regression suites and architecting mock test dependencies."
+      ],
+      "tech_stack": [
+        "C#",
+        ".NET 8",
+        "ReactJS",
+        "JavaScript",
+        "TypeScript",
+        "Agentic AI",
+        "MCP Servers",
+        "Playwright",
+        "SQL",
+        "GitHub Actions (CI/CD)",
+        "Figma MCP",
+        "Claude Code"
+      ]
+    },
+    {
+      "company": "Cofount",
+      "title": "Software Development Intern",
+      "start_date": "2024-01",
+      "end_date": "2024-01",
+      "bullets": [
+        "Developed and implemented the UI from Figma designs using React, Shadcn, and TailwindCSS, ensuring pixel perfect alignment with design specifications.",
+        "Built reusable components including cards, buttons, and accordions, to maintain consistency and scalability across the application."
+      ],
+      "tech_stack": ["React", "TypeScript", "TailwindCSS", "ShadCN", "Figma"]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Dayanand Sagar College of Engineering, Bangalore",
+      "degree": "B.E. in Information Science and Engineering",
+      "start_date": "2020-08",
+      "end_date": "2024-06",
+      "gpa": "9.0/10",
+      "coursework": [
+        "Object Oriented Programming",
+        "Database Management System",
+        "Discrete Maths",
+        "Information Retrieval",
+        "Data Structures and Algorithms",
+        "Operating Systems",
+        "Computer Networks",
+        "Artificial Intelligence and Machine Learning",
+        "Advance Data Structures and Algorithms"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Karna",
+      "description": "Architected and developed a decentralized crowdfunding platform managed by a DAO using smart contracts. Co-authored and published research on DAO-based authentication in IEEE, presenting the paper at IISc.",
+      "links": {
+        "github": "https://github.com/Adithya2310/Karna",
+        "ieee_paper": "https://ieeexplore.ieee.org/document/10677068/"
+      }
+    },
+    {
+      "name": "EquiBlock",
+      "description": "Engineered a decentralized trading platform with custom interactive UI components to mint and trade global stock indices using PYUSD collateral and real-time Pyth price oracles.",
+      "links": {
+        "github": "https://github.com/Adithya2310/EquiBlock",
+        "live_demo": "https://equiblock.vercel.app/"
+      }
+    }
+  ],
+  "achievements": [
+    {
+      "title": "ETHIndia 2024 Winner",
+      "description": "Secured 2nd Place in both Coinbase and Base tracks for CoinSwipe, a project utilizing the Coinbase Development Platform.",
+      "link": "https://devfolio.co/projects/coin-swipe-bb75"
+    },
+    {
+      "title": "ETHIndia 2023 Winner",
+      "description": "Awarded \"Best App on OKX X1 Chain\" for Derent, a decentralized multi-chain renting platform.",
+      "link": "https://devfolio.co/projects/derent-e262"
+    },
+    {
+      "title": "Research Publication (IEEE)",
+      "description": "Co-authored \"Karna\", a paper regarding DAO-based authentication for crowdfunding platforms and presented it at IISc.",
+      "link": "https://ieeexplore.ieee.org/document/10677068/"
+    },
+    {
+      "title": "Arweave India Cohort 1 Winner",
+      "description": "Selected for building BetterIdea, an online IDE designed to streamline smart contract deployment on the Arweave network.",
+      "link": null
+    }
+  ]
+}
