@@ -245,6 +245,19 @@ def test_parse_salary_range_empty_is_none():
     assert parse_salary_range(None) is None
 
 
+def test_parse_salary_range_handles_int_from_sheets_auto_typing():
+    # Google Sheets stores a manually-typed plain number as a numeric cell,
+    # so gspread's get_all_records() hands back an int/float here, not a
+    # str, even though every writer in job_sources always writes a string.
+    assert parse_salary_range(150000) == (150000.0, 150000.0)
+    assert parse_salary_range(150000.5) == (150000.5, 150000.5)
+
+
+def test_score_salary_handles_int_salary_range_from_sheets():
+    job = _job(salary_range=150000)
+    assert score_salary(job, _base_config(salary_floor=100000)) == 1.0
+
+
 def test_salary_unknown_when_no_floor_configured():
     job = _job(salary_range="150000-150000")
     assert score_salary(job, _base_config(salary_floor=None)) is UNKNOWN

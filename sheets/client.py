@@ -61,9 +61,19 @@ class SheetsClient:
         return self._worksheet_cache[sheet_name]
 
     def get_rows(self, sheet_name):
-        """Return every data row as a list of dicts keyed by column name."""
+        """Return every data row as a list of dicts keyed by column name.
+
+        numericise_ignore='all' disables gspread's automatic str->int/float
+        coercion: without it, any cell that merely *looks* numeric gets
+        silently retyped, and that's not just a salary_range problem — a
+        16-char hex job_id can itself parse as scientific notation (e.g.
+        "...e309..." overflows to float('inf')), corrupting the very ID
+        every other module keys off of. Every reader downstream already
+        does its own numeric coercion where it actually needs a number
+        (match_score, salary_range), so nothing relies on gspread's guess.
+        """
         ws = self._worksheet(sheet_name)
-        return ws.get_all_records(expected_headers=SHEETS[sheet_name])
+        return ws.get_all_records(expected_headers=SHEETS[sheet_name], numericise_ignore=["all"])
 
     def append_row(self, sheet_name, row):
         """Append one row. `row` is a dict of column -> value; columns left

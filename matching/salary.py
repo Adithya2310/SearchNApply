@@ -25,7 +25,9 @@ def parse_salary_range(raw):
     (point estimates show up as min==max) and rougher human strings like
     "$120K-$150K a year" as a fallback.
     """
-    raw = (raw or "").strip()
+    if raw is None or raw == "":
+        return None
+    raw = str(raw).strip()
     if not raw:
         return None
 

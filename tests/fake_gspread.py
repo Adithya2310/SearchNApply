@@ -24,7 +24,7 @@ class FakeWorksheet:
             values.append(row[col_index - 1] if col_index - 1 < len(row) else "")
         return values
 
-    def get_all_records(self, expected_headers=None):
+    def get_all_records(self, expected_headers=None, numericise_ignore=None):
         if not self.rows:
             return []
         header = self.rows[0]
