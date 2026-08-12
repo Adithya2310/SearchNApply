@@ -34,12 +34,19 @@ class FakeWorksheet:
             records.append(dict(zip(header, padded)))
         return records
 
+    def get_all_values(self):
+        return [list(row) for row in self.rows]
+
     def update(self, range_a1, values, value_input_option=None):
         match = re.match(r"^[A-Z]+(\d+):[A-Z]+(\d+)$", range_a1)
         row_index = int(match.group(1))
         while len(self.rows) < row_index:
             self.rows.append([])
         self.rows[row_index - 1] = [str(v) for v in values[0]]
+
+    def batch_update(self, data, value_input_option=None):
+        for item in data:
+            self.update(item["range"], item["values"])
 
 
 class FakeSpreadsheet:

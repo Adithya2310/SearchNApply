@@ -118,3 +118,50 @@ class SheetsClient:
         start_a1 = gspread.utils.rowcol_to_a1(row_index, 1)
         end_a1 = gspread.utils.rowcol_to_a1(row_index, len(columns))
         ws.update(f"{start_a1}:{end_a1}", [current], value_input_option="RAW")
+
+    def update_rows(self, sheet_name, id_column, updates_by_id):
+        """Merge updates into many rows in a single batched API call.
+        `updates_by_id` is {id_value: {col: value, ...}}. Use this over
+        update_row in a loop whenever updating more than a handful of rows
+        (e.g. M4 scoring every unscored Jobs row) — same read-quota lesson
+        as append_rows.
+
+        Raises if any id_value isn't found. No-op if updates_by_id is empty.
+        """
+        if not updates_by_id:
+            return
+
+        columns = SHEETS[sheet_name]
+        if id_column not in columns:
+            raise ValueError(f"'{id_column}' is not a column of '{sheet_name}'")
+
+        ws = self._worksheet(sheet_name)
+        id_col_index = columns.index(id_column) + 1
+        id_values = ws.col_values(id_col_index)
+
+        wanted = {str(k) for k in updates_by_id}
+        row_index_by_id = {}
+        for offset, value in enumerate(id_values[1:], start=2):
+            if value in wanted and value not in row_index_by_id:
+                row_index_by_id[value] = offset
+
+        missing = wanted - set(row_index_by_id)
+        if missing:
+            raise ValueError(f"No row(s) in '{sheet_name}' where {id_column} in {sorted(missing)}")
+
+        all_values = ws.get_all_values()
+        batch_data = []
+        for id_value, updates in updates_by_id.items():
+            row_index = row_index_by_id[str(id_value)]
+            current = list(all_values[row_index - 1]) if row_index - 1 < len(all_values) else []
+            current += [""] * (len(columns) - len(current))
+            for col, value in updates.items():
+                if col not in columns:
+                    raise ValueError(f"'{col}' is not a column of '{sheet_name}'")
+                current[columns.index(col)] = value
+
+            start_a1 = gspread.utils.rowcol_to_a1(row_index, 1)
+            end_a1 = gspread.utils.rowcol_to_a1(row_index, len(columns))
+            batch_data.append({"range": f"{start_a1}:{end_a1}", "values": [current]})
+
+        ws.batch_update(batch_data, value_input_option="RAW")
