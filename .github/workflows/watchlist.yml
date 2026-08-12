@@ -1,0 +1,38 @@
+name: Watchlist Monitor
+
+on:
+  schedule:
+    # M6, per DESIGN.md ("every 5-10 min... a small, fixed list, not a
+    # broad search"). Offset from scan.yml's :00/:30 so the two workflows
+    # don't both write to the Jobs sheet at the same instant — see the
+    # comment there. GitHub Actions cron delay applies here too.
+    - cron: "5,15,25,35,45,55 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  watchlist:
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: credentials/service_account.json
+      GOOGLE_SHEETS_SPREADSHEET_ID: ${{ secrets.GOOGLE_SHEETS_SPREADSHEET_ID }}
+      GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write Google service account credentials
+        run: |
+          mkdir -p credentials
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_JSON" > credentials/service_account.json
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+      - name: M6 — Watchlist Monitor
+        run: python scripts/run_watchlist.py

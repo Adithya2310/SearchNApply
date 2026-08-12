@@ -28,3 +28,18 @@ The user needs to create these accounts and provide the resulting keys/credentia
 ## Where these go
 
 All keys are read from environment variables — see `.env.example` for exact names. Locally, copy `.env.example` to `.env`. For GitHub Actions, add the same values as repo Secrets (Settings → Secrets and variables → Actions).
+
+## GitHub Actions repo Secrets (Phase 1 orchestration)
+
+`.github/workflows/scan.yml` (M1+M4+M5) and `.github/workflows/watchlist.yml` (M6) read these repo Secrets — set them all under Settings → Secrets and variables → Actions → New repository secret:
+
+| Secret name | Value |
+|---|---|
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | The **full contents** of the service account JSON key file (not a path — paste the whole JSON as the secret value). The workflow writes it to `credentials/service_account.json` at runtime. |
+| `GOOGLE_SHEETS_SPREADSHEET_ID` | Same value as the local `.env` |
+| `GMAIL_ADDRESS` | Same value as the local `.env` |
+| `GMAIL_APP_PASSWORD` | Same value as the local `.env` |
+| `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` | scan.yml only (M1's Adzuna integration) |
+| `RAPIDAPI_JSEARCH_KEY` | scan.yml only (M1's JSearch integration) |
+
+Both workflows also need to actually exist on GitHub before their `schedule:` cron triggers will fire — commit + push `.github/workflows/*.yml` to the default branch. Note: GitHub disables scheduled workflows automatically after 60 days with no commits to the repo — if the repo goes quiet, a scheduled run may silently stop firing until a new commit re-enables it.

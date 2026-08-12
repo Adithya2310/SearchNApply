@@ -1,0 +1,49 @@
+name: Scan, Score, Digest
+
+on:
+  schedule:
+    # M1/M4/M5, per DESIGN.md/BUILD_PLAN.md. Runs on the hour and half-hour;
+    # watchlist.yml is offset (:05/:15/...) so the two workflows don't both
+    # write to the Jobs sheet at the same instant. GitHub Actions cron has
+    # its own queuing delay (often a few minutes) on top of this, so treat
+    # this as "roughly every 30 min," not exact.
+    - cron: "0,30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: credentials/service_account.json
+      GOOGLE_SHEETS_SPREADSHEET_ID: ${{ secrets.GOOGLE_SHEETS_SPREADSHEET_ID }}
+      ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+      ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+      RAPIDAPI_JSEARCH_KEY: ${{ secrets.RAPIDAPI_JSEARCH_KEY }}
+      JSEARCH_SCAN_INTERVAL_HOURS: "12"
+      GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write Google service account credentials
+        run: |
+          mkdir -p credentials
+          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_JSON" > credentials/service_account.json
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+      - name: M1 — Job Aggregator
+        run: python scripts/run_job_scan.py
+
+      - name: M4 — Matching Engine
+        run: python scripts/run_matching.py
+
+      - name: M5 — Gmail Digest
+        run: python scripts/run_digest.py
