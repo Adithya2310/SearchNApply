@@ -17,7 +17,13 @@ AMBIGUOUS_CANONICALS = {"c", "r", "go"}
 # skills, C level stakeholders" has a comma-space immediately before "C"
 # too, same shape as a real list ("Languages: C, ..."). Only a trailing
 # delimiter reliably distinguishes an enumerated list from ordinary prose.
-TRAILING_LIST_DELIMS = set(",/;:()[]|-.\n")
+#
+# Deliberately no '.' either — confirmed against real scanned jobs:
+# "Arthur C. Clarke famously said..." puts a period right after a bare "C"
+# from an ordinary middle initial, identical in shape to a period ending an
+# enumerated list ("...Python, and R."). The false positive (any "X. Y"
+# name) is far more common than the list-ending case it was meant to catch.
+TRAILING_LIST_DELIMS = set(",/;:()[]|-\n")
 
 # Bare "js"/"ts" satisfy the normal non-alnum boundary check inside
 # "Node.js"/"Next.js"/"config.ts" too, since '.' counts as non-alnum on both

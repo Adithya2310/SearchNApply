@@ -111,20 +111,32 @@ Job location strings are messy: `"Ontario"`, `"London, United Kingdom"`,
 `"New York City, New York"`, `"Anywhere"`, `""`.
 
 1. Config: `target_locations` (list, already a seeded key), `remote_ok`
-   (default `Y`), optional `home_country`.
+   (default `Y`), `user_country` (optional — where the user actually is).
 2. Detect remote via keywords in location OR title/description:
    `remote`, `anywhere`, `distributed`, `work from home`, `wfh`.
 3. **Score**
    ```
-   remote job AND remote_ok                         -> 1.0
-   location matches a target (city/region/country)  -> 1.0
-   same country as a target, different city         -> 0.6
-   location present, no match, not remote           -> 0.2   (floor is Config-tunable for relocators)
-   job location empty                               -> UNKNOWN
-   target_locations empty (user set no preference)  -> UNKNOWN
+   remote job AND remote_ok AND not geo-restricted away from user_country -> 1.0
+   location matches a target (city/region/country)                       -> 1.0
+   same country as a target, different city                              -> 0.6
+   location present, no match, not remote                                -> 0.2   (floor is Config-tunable for relocators)
+   job location empty                                                    -> UNKNOWN
+   target_locations empty (user set no preference)                       -> UNKNOWN
    ```
    Matching is token/substring based, case-insensitive, after light
    normalization.
+
+   **Geo-restricted remote (added 2026-08-12, found via live testing):**
+   "Remote" alone in a listing doesn't mean remote-from-anywhere — real
+   postings say things like `"Remote within United States"` or
+   `"Remote within Canada or United States"` in the `location` field
+   itself. If `user_country` is set and the location field contains a
+   `remote (within|in|for|based in) <region>` phrase that doesn't name
+   the user's country, that restriction wins over the bare "remote"
+   keyword — the listing falls through to the normal (non-remote)
+   matching logic instead of getting automatic full credit. If
+   `user_country` is unset, this check is skipped entirely (can't judge,
+   so don't penalize) and behavior is unchanged from before.
 
 ## 4. Combining into match_score
 
@@ -186,6 +198,7 @@ failure must **fall back to the rule-based scorer**, never crash the scan.
 | `salary_currency` | `USD` | base currency for comparison |
 | `remote_ok` | `Y` | whether remote jobs score full location |
 | `target_locations` | *(already seeded, empty)* | comma-list of acceptable locations |
+| `user_country` | *(unset ⇒ geo-restriction check skipped)* | where the user actually is; used to detect "Remote within X" restrictions that exclude them |
 | `ai_provider` | `none` | already exists; selects skill-scoring mode |
 
 Keeping every knob in Config honors the project rule: tune the whole system

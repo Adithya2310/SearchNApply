@@ -35,4 +35,8 @@ def load_config(client):
         "salary_currency": (str(raw.get("salary_currency", "USD")).strip().upper() or "USD"),
         "remote_ok": raw.get("remote_ok", "Y"),
         "target_locations": raw.get("target_locations", ""),
+        # Where the user actually is, so "Remote within United States" can
+        # be recognized as excluding them rather than getting full remote
+        # credit. Blank means we can't judge, so no restriction is applied.
+        "user_country": raw.get("user_country", ""),
     }

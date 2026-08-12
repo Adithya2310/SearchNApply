@@ -51,6 +51,7 @@ def _base_config(**overrides):
         "salary_currency": "USD",
         "remote_ok": "Y",
         "target_locations": "",
+        "user_country": "",
         "ai_provider": "none",
     }
     config.update(overrides)
@@ -181,6 +182,24 @@ def test_ambiguous_bare_r_requires_list_delimiter_context():
     assert substring == []
 
 
+def test_bare_c_does_not_false_match_a_middle_initial():
+    # found live: "Chief Audit Officer" scored well above threshold purely
+    # because its description quoted "Arthur C. Clarke" — the period after
+    # a middle initial looks identical, from the right, to a period ending
+    # an enumerated list ("...Python, and R.").
+    vocab = {"c": 1.0}
+    result = score_skills(
+        _job(
+            description_raw=(
+                'Arthur C. Clarke famously said that "any sufficiently advanced '
+                'technology is indistinguishable from magic."'
+            )
+        ),
+        vocab,
+    )
+    assert result.matched == []
+
+
 # ---- title weighting + saturation ----
 
 
@@ -292,6 +311,45 @@ def test_remote_job_not_auto_matched_when_remote_ok_is_n():
     job = _job(location="Remote")
     score = score_location(job, _base_config(target_locations="Bangalore", remote_ok="N"))
     assert score < 1.0
+
+
+def test_geo_restricted_remote_excluding_user_country_does_not_get_full_credit():
+    # found live: a Mercury listing's location field literally said
+    # "...or Remote within United States" — that's remote, but not for
+    # someone in India, and was still scoring a full 1.0 location match.
+    job = _job(
+        location="San Francisco, CA, New York, NY, Portland, OR, or Remote within United States"
+    )
+    score = score_location(
+        job, _base_config(target_locations="Bangalore,Pune,Hyderabad,Mumbai,Remote", user_country="India")
+    )
+    assert score < 1.0
+
+
+def test_geo_restricted_remote_including_user_country_still_gets_full_credit():
+    job = _job(location="Remote within India, US, or Canada")
+    score = score_location(
+        job, _base_config(target_locations="Bangalore,Remote", user_country="India")
+    )
+    assert score == 1.0
+
+
+def test_unrestricted_remote_still_gets_full_credit_when_user_country_is_set():
+    job = _job(location="Remote")
+    score = score_location(
+        job, _base_config(target_locations="Bangalore,Remote", user_country="India")
+    )
+    assert score == 1.0
+
+
+def test_geo_restricted_remote_unaffected_when_user_country_not_configured():
+    # can't judge without knowing where the user is -> don't penalize;
+    # preserves the pre-fix behavior when user_country is left unset.
+    job = _job(location="Remote within United States")
+    score = score_location(
+        job, _base_config(target_locations="Bangalore,Remote", user_country="")
+    )
+    assert score == 1.0
 
 
 # ---- combined score_job: dynamic reweighting ----
