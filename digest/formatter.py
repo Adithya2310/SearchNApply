@@ -8,14 +8,15 @@ def _score(job):
         return 0
 
 
-def format_digest(jobs):
+def format_digest(jobs, subject_prefix="Job Digest"):
     """jobs: Jobs rows already filtered to status=New and match_score above
     threshold. Returns (subject, text_body, html_body), sorted best match
-    first.
+    first. M6 reuses this with subject_prefix="Watchlist Alert" for its own
+    standalone emails, per DESIGN.md (not bundled into the M5 digest).
     """
     jobs_sorted = sorted(jobs, key=_score, reverse=True)
     n = len(jobs_sorted)
-    subject = f"Job Digest: {n} new match{'es' if n != 1 else ''}"
+    subject = f"{subject_prefix}: {n} new match{'es' if n != 1 else ''}"
 
     text_lines = []
     html_rows = []
