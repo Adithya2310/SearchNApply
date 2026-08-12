@@ -14,6 +14,10 @@ class FakeWorksheet:
     def append_row(self, values, value_input_option=None):
         self.rows.append([str(v) for v in values])
 
+    def append_rows(self, values, value_input_option=None):
+        for row in values:
+            self.rows.append([str(v) for v in row])
+
     def col_values(self, col_index):
         values = []
         for row in self.rows:

@@ -22,6 +22,7 @@ class SheetsClient:
         creds = Credentials.from_service_account_file(credentials_path, scopes=SCOPES)
         self._gc = gspread.authorize(creds)
         self._spreadsheet = self._gc.open_by_key(self.spreadsheet_id)
+        self._worksheet_cache = {}
 
     def ensure_schema(self):
         """Create any missing tabs with the correct header row.
@@ -30,29 +31,34 @@ class SheetsClient:
         row doesn't match schema.py, since silently reordering columns
         would corrupt every other module's reads/writes.
         """
-        existing_titles = {ws.title for ws in self._spreadsheet.worksheets()}
+        all_worksheets = {ws.title: ws for ws in self._spreadsheet.worksheets()}
         for sheet_name, columns in SHEETS.items():
-            if sheet_name not in existing_titles:
+            if sheet_name not in all_worksheets:
                 ws = self._spreadsheet.add_worksheet(
                     title=sheet_name, rows=1000, cols=max(len(columns), 1)
                 )
                 ws.append_row(columns, value_input_option="RAW")
-                continue
-
-            ws = self._spreadsheet.worksheet(sheet_name)
-            header = ws.row_values(1)
-            if not header:
-                ws.append_row(columns, value_input_option="RAW")
-            elif header != columns:
-                raise ValueError(
-                    f"Sheet '{sheet_name}' header {header} does not match "
-                    f"expected schema {columns}"
-                )
+            else:
+                ws = all_worksheets[sheet_name]
+                header = ws.row_values(1)
+                if not header:
+                    ws.append_row(columns, value_input_option="RAW")
+                elif header != columns:
+                    raise ValueError(
+                        f"Sheet '{sheet_name}' header {header} does not match "
+                        f"expected schema {columns}"
+                    )
+            self._worksheet_cache[sheet_name] = ws
 
     def _worksheet(self, sheet_name):
         if sheet_name not in SHEETS:
             raise ValueError(f"Unknown sheet '{sheet_name}'")
-        return self._spreadsheet.worksheet(sheet_name)
+        if sheet_name not in self._worksheet_cache:
+            # Not populated by ensure_schema (e.g. called before it, or in a
+            # fresh process) — self._spreadsheet.worksheet() does its own
+            # metadata read, so we only want to pay that cost once per sheet.
+            self._worksheet_cache[sheet_name] = self._spreadsheet.worksheet(sheet_name)
+        return self._worksheet_cache[sheet_name]
 
     def get_rows(self, sheet_name):
         """Return every data row as a list of dicts keyed by column name."""
@@ -63,10 +69,19 @@ class SheetsClient:
         """Append one row. `row` is a dict of column -> value; columns left
         out of `row` are written blank.
         """
+        self.append_rows(sheet_name, [row])
+
+    def append_rows(self, sheet_name, rows):
+        """Append many rows in a single API call. Use this over append_row
+        in a loop whenever writing more than one row — Sheets' per-minute
+        write/read quotas are easy to blow through one row at a time.
+        """
+        if not rows:
+            return
         ws = self._worksheet(sheet_name)
         columns = SHEETS[sheet_name]
-        values = [row.get(col, "") for col in columns]
-        ws.append_row(values, value_input_option="RAW")
+        values = [[row.get(col, "") for col in columns] for row in rows]
+        ws.append_rows(values, value_input_option="RAW")
 
     def find_row_index(self, sheet_name, id_column, id_value):
         """1-indexed sheet row (header = row 1) matching id_column ==
