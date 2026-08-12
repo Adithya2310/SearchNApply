@@ -166,9 +166,41 @@ def test_one_company_fetch_error_does_not_block_others(client, monkeypatch):
 def test_unsupported_careers_source_is_skipped_not_fatal(client, monkeypatch):
     client.append_row(
         "Watchlist",
-        {"company_name": "BigCo", "careers_source": "workday", "careers_identifier": "bigco", "active": "Y"},
+        {"company_name": "BigCo", "careers_source": "custom-scrape", "careers_identifier": "bigco", "active": "Y"},
     )
 
     summary = monitor.run_watchlist_scan(client, RESUME_PROFILE)
 
     assert "unsupported careers_source" in summary["watchlist:BigCo"]
+
+
+def test_workday_source_is_dispatched_with_target_roles_and_existing_ids(client, monkeypatch):
+    client.append_row("Config", {"key": "target_roles", "value": "python engineer,data scientist"})
+    client.append_row(
+        "Watchlist",
+        {"company_name": "BigCo", "careers_source": "workday", "careers_identifier": "bigco/wd5/External", "active": "Y"},
+    )
+
+    calls = []
+
+    def fake_fetch_jobs(identifier, queries, company_name=None, existing_job_ids=None):
+        # snapshot now — existing_job_ids is the same mutable set the caller
+        # keeps mutating for the rest of the run, so capture its state at
+        # call time, not a live reference to it.
+        calls.append((identifier, list(queries), company_name, set(existing_job_ids or set())))
+        return [_job("BigCo", "Python Engineer", "https://bigco/1", "python role")]
+
+    monkeypatch.setattr(monitor.workday, "fetch_jobs", fake_fetch_jobs)
+
+    summary = monitor.run_watchlist_scan(client, RESUME_PROFILE, today="2026-08-12")
+
+    assert len(calls) == 1
+    identifier, queries, company_name, existing_ids = calls[0]
+    assert identifier == "bigco/wd5/External"
+    assert queries == ["python engineer", "data scientist"]
+    assert company_name == "BigCo"
+    assert existing_ids == set()  # Jobs sheet was empty at call time
+
+    assert summary["watchlist:BigCo"] == 1
+    rows = client.get_rows("Jobs")
+    assert rows[0]["source"] == "watchlist:BigCo"

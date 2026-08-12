@@ -1,15 +1,23 @@
 from datetime import datetime, timezone
 
-from job_sources import greenhouse, lever
+from job_sources import greenhouse, lever, workday
 from job_sources.dedup import compute_job_id
 from digest.formatter import format_digest
 from digest.mailer import send_email
 from matching.engine import run_matching
 
-# Companies on Greenhouse/Lever are easy per DESIGN.md; Workday and custom
-# scrapes are explicitly called out as more fragile, per-company efforts —
-# not built yet. Unsupported careers_source values are skipped, not fatal,
-# same isolation principle as M1's per-source error handling.
+# Companies on Greenhouse/Lever/Workday are the "easy, queryable" tier per
+# DESIGN.md. Custom scrapes are explicitly called out as more fragile,
+# per-company efforts — not built yet. Unsupported careers_source values
+# are skipped, not fatal, same isolation principle as M1's per-source
+# error handling.
+#
+# Workday isn't in this dict — it needs target_roles (a search query,
+# since large employers here can have thousands of postings) and
+# existing_job_ids (to skip its extra per-job detail fetch for anything
+# already seen) that greenhouse/lever don't need, so it's dispatched
+# separately in run_watchlist_scan rather than forcing every fetcher into
+# the same signature.
 SOURCE_FETCHERS = {
     "greenhouse": lambda identifier, company_name: greenhouse.fetch_jobs(
         identifier, company_name=company_name
@@ -22,6 +30,10 @@ SOURCE_FETCHERS = {
 
 def _is_active(value):
     return str(value or "").strip().upper() in {"Y", "YES", "TRUE", "1"}
+
+
+def _split_csv(value):
+    return [v.strip() for v in (value or "").split(",") if v.strip()]
 
 
 def _existing_job_ids(client):
@@ -43,6 +55,9 @@ def run_watchlist_scan(client, resume_profile, today=None):
     watchlist_rows = client.get_rows("Watchlist")
     existing_ids = _existing_job_ids(client)
 
+    config_rows = {r["key"]: r["value"] for r in client.get_rows("Config") if r.get("key")}
+    target_roles = _split_csv(config_rows.get("target_roles"))
+
     summary = {}
     new_job_ids_this_run = []
 
@@ -55,13 +70,20 @@ def run_watchlist_scan(client, resume_profile, today=None):
         identifier = (row.get("careers_identifier") or "").strip()
         label = f"watchlist:{company_name}"
 
-        fetcher = SOURCE_FETCHERS.get(source)
-        if fetcher is None:
-            summary[label] = f"error: unsupported careers_source '{source}'"
-            continue
-
         try:
-            raw_jobs = fetcher(identifier, company_name)
+            if source == "workday":
+                raw_jobs = workday.fetch_jobs(
+                    identifier,
+                    target_roles or [""],
+                    company_name=company_name,
+                    existing_job_ids=existing_ids,
+                )
+            else:
+                fetcher = SOURCE_FETCHERS.get(source)
+                if fetcher is None:
+                    summary[label] = f"error: unsupported careers_source '{source}'"
+                    continue
+                raw_jobs = fetcher(identifier, company_name)
         except Exception as e:
             summary[label] = f"error: {e}"
             continue
