@@ -101,6 +101,7 @@ Your skills list, salary range, target roles/locations, resume file path, AI pro
   - On approval: the confirmed changes get merged into `resume_profile.json`
   - Every decision (approved/edited/rejected) plus the original raw input is kept in `profile_updates_log.jsonl` — a full audit trail of how your profile evolved, and an easy undo path if something slips through wrong
 - *Where this lives:* the "Update Profile" tab in the M7 dashboard — a chat box, with the diff/approval view shown right below it in the same flow. Sonnet is the right model for the extraction step — simple structured-output work, not deep reasoning. The approval step itself needs no AI at all, it's just you reviewing a diff.
+- *Implemented* (Aug 13, 2026) as `profile_updater/` (`extract.py` — the one AI call, via M14; `apply.py` — pure functions to merge a skill list or a bullet into an existing work_experience/project or a brand-new project; `log.py` — the `profile_updates_log.jsonl` audit trail), wired into `dashboard.py`'s Update Profile tab. Uses Gemini (same M14 abstraction as M9), not Sonnet specifically, since Config.ai_provider is the actual dispatch point regardless of which model DESIGN.md originally called out. "Ambiguous target" is resolved via a selectbox defaulting to the AI's best guess, not a conversational follow-up question — same practical effect (you resolve it), simpler to build in Streamlit's rerun-per-interaction model.
 
 **M4 — Matching/Scoring Engine**
 - *Trigger:* Right after M1 finds new jobs

@@ -7,3 +7,4 @@ __pycache__/
 .DS_Store
 BUILD_PLAN*
 tailored_resumes/
+profile_updates_log.jsonl

@@ -3,8 +3,8 @@
     streamlit run dashboard.py
 
 Runs only when you open it — never scheduled, unlike the GitHub Actions
-side. Review + Tracker are live; Log Manual Application and Update Profile
-are stubs until M3 is built (see BUILD_PLAN.md's reprioritized order).
+side. Review, Tracker, Apply Kit, and Update Profile are live; Log Manual
+Application is still a stub.
 """
 
 import json
@@ -22,6 +22,10 @@ from dotenv import load_dotenv
 from application_kit.fields import build_fields
 from application_kit.pitch import generate_pitch
 from matching.config import load_config
+from profile_updater.apply import add_bullet_to_project, add_bullet_to_work_experience, add_new_project
+from profile_updater.extract import extract_update
+from profile_updater.log import append_log_entry
+from resume_tailor.profile_updates import add_confirmed_skills
 from sheets.client import SheetsClient
 from sheets.schema import SHEETS
 
@@ -180,14 +184,23 @@ def render_tracker_tab(client):
             st.info("No changes to save.")
 
 
-def _load_resume_profile(client):
+def _resume_profile_path(client):
     # load_config() only exposes M4's scoring keys, not resume_profile_path
     # — same reason scripts/run_matching.py, scripts/tailor_resume.py, etc.
     # read it from a raw Config dict instead.
     config_rows = {r["key"]: r["value"] for r in client.get_rows("Config") if r.get("key")}
-    path = config_rows.get("resume_profile_path") or "resume_profile.json"
-    with open(path) as f:
+    return config_rows.get("resume_profile_path") or "resume_profile.json"
+
+
+def _load_resume_profile(client):
+    with open(_resume_profile_path(client)) as f:
         return json.load(f)
+
+
+def _save_resume_profile(client, resume_profile):
+    with open(_resume_profile_path(client), "w") as f:
+        json.dump(resume_profile, f, indent=2)
+        f.write("\n")
 
 
 def render_apply_kit_tab(client):
@@ -235,6 +248,120 @@ def render_apply_kit_tab(client):
         st.info("No job description linked to this application — can't generate a pitch for it yet.")
 
 
+def _target_options(resume_profile):
+    options = [("work_experience", exp.get("company", "")) for exp in resume_profile.get("work_experience", []) or []]
+    options += [("project", proj.get("name", "")) for proj in resume_profile.get("projects", []) or []]
+    options.append(("new_project", None))
+    return options
+
+
+def _target_label(option):
+    target_type, name = option
+    if target_type == "new_project":
+        return "New project"
+    prefix = "Work experience" if target_type == "work_experience" else "Project"
+    return f"{prefix}: {name}"
+
+
+def _default_target_index(options, proposal):
+    suggested_type = proposal.get("suggested_target_type")
+    suggested_name = (proposal.get("suggested_target_name") or "").strip().lower()
+    for i, (target_type, name) in enumerate(options):
+        if target_type == suggested_type and (name or "").strip().lower() == suggested_name:
+            return i
+    return len(options) - 1  # "New project" is always last
+
+
+def render_update_profile_tab(client):
+    st.subheader("Update Profile")
+    st.caption(
+        "Tell it about something you did — a work task, a side project — and it proposes a resume "
+        "update for you to review. Nothing is saved to resume_profile.json until you approve it."
+    )
+
+    raw_text = st.text_area("What did you do?", key="profile_update_text", height=100)
+    if st.button("Analyze", key="analyze_profile_update"):
+        if not raw_text.strip():
+            st.warning("Type something first.")
+        else:
+            resume_profile = _load_resume_profile(client)
+            config = load_config(client)
+            with st.spinner("Analyzing..."):
+                proposal = extract_update(raw_text, resume_profile, config)
+            st.session_state["profile_update_proposal"] = proposal
+            st.session_state["profile_update_raw_text"] = raw_text
+
+    proposal = st.session_state.get("profile_update_proposal")
+    if not proposal:
+        return
+
+    st.divider()
+    st.markdown("**Review before saving**")
+
+    resume_profile = _load_resume_profile(client)
+    selected_skills = st.multiselect(
+        "Skills to add", options=proposal.get("skills") or [], default=proposal.get("skills") or []
+    )
+
+    bullet_text = ""
+    target = None
+    if proposal.get("bullet"):
+        options = _target_options(resume_profile)
+        default_index = _default_target_index(options, proposal)
+        target = st.selectbox(
+            "Add this bullet to", options=options, index=default_index, format_func=_target_label
+        )
+        if target[0] == "new_project":
+            new_project_name = st.text_input(
+                "New project name", value=proposal.get("suggested_target_name") or ""
+            )
+            target = ("new_project", new_project_name)
+        bullet_text = st.text_area("Bullet text", value=proposal.get("bullet") or "", key="profile_update_bullet")
+
+    col_approve, col_reject = st.columns(2)
+    with col_approve:
+        approve_clicked = st.button("Approve and save", type="primary")
+    with col_reject:
+        reject_clicked = st.button("Reject")
+
+    if reject_clicked:
+        append_log_entry(st.session_state["profile_update_raw_text"], proposal, decision="rejected")
+        del st.session_state["profile_update_proposal"]
+        st.info("Discarded — nothing written.")
+        st.rerun()
+
+    if approve_clicked:
+        applied = {"skills": selected_skills, "bullet": None}
+        if selected_skills:
+            add_confirmed_skills(resume_profile, selected_skills)
+
+        if bullet_text.strip() and target:
+            target_type, target_name = target
+            if not target_name or not target_name.strip():
+                st.warning("New project needs a name before this can be saved.")
+                return
+            if target_type == "work_experience":
+                add_bullet_to_work_experience(resume_profile, target_name, bullet_text.strip())
+            elif target_type == "project":
+                add_bullet_to_project(resume_profile, target_name, bullet_text.strip())
+            else:
+                add_new_project(resume_profile, target_name, bullet_text.strip())
+            applied["bullet"] = {"target_type": target_type, "target_name": target_name, "text": bullet_text.strip()}
+
+        _save_resume_profile(client, resume_profile)
+
+        edited = selected_skills != (proposal.get("skills") or []) or bullet_text.strip() != (proposal.get("bullet") or "")
+        append_log_entry(
+            st.session_state["profile_update_raw_text"],
+            proposal,
+            decision="edited" if edited else "approved",
+            applied=applied,
+        )
+        del st.session_state["profile_update_proposal"]
+        st.success("Saved to resume_profile.json.")
+        st.rerun()
+
+
 def main():
     client = get_client()
     st.title("Job Search Dashboard")
@@ -251,7 +378,7 @@ def main():
     with tab_log:
         st.info("Coming soon — manual application logging isn't built yet.")
     with tab_profile:
-        st.info("Coming soon — M3 Profile Updater isn't built yet.")
+        render_update_profile_tab(client)
 
 
 if __name__ == "__main__":
