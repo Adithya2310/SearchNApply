@@ -1,29 +1,37 @@
 from datetime import datetime, timezone
 
 from job_sources import greenhouse, lever, workday
+from job_sources.custom import registry as custom_registry
 from job_sources.dedup import compute_job_id
 from digest.formatter import format_digest
 from digest.mailer import send_email
 from matching.engine import run_matching
 
-# Companies on Greenhouse/Lever/Workday are the "easy, queryable" tier per
-# DESIGN.md. Custom scrapes are explicitly called out as more fragile,
-# per-company efforts — not built yet. Unsupported careers_source values
-# are skipped, not fatal, same isolation principle as M1's per-source
-# error handling.
+# Two dispatch tiers, per DESIGN.md's M6 note:
 #
-# Workday isn't in this dict — it needs target_roles (a search query,
-# since large employers here can have thousands of postings) and
-# existing_job_ids (to skip its extra per-job detail fetch for anything
-# already seen) that greenhouse/lever don't need, so it's dispatched
-# separately in run_watchlist_scan rather than forcing every fetcher into
-# the same signature.
+# 1. ATS tier (below) — one fetcher module per platform, reused across
+#    every company on that platform. Adding a company here is just a new
+#    Watchlist row; no code change.
+# 2. Custom-scrape tier (job_sources/custom/, via custom_registry) — one
+#    bespoke module per company, since a custom careers page has no shared
+#    API to reuse. Adding a company here is one new file plus a Watchlist
+#    row with careers_identifier = that file's module name; dispatch below
+#    never changes.
+#
+# Every fetcher (ATS or custom) is called with the same four args —
+# target_roles/existing_job_ids are ignored by fetchers that don't need
+# them (Greenhouse/Lever boards are small enough to return full postings
+# in one call) and used by ones that do (Workday, and any custom scraper
+# for a large employer, to avoid an N+1 detail-fetch per posting).
 SOURCE_FETCHERS = {
-    "greenhouse": lambda identifier, company_name: greenhouse.fetch_jobs(
+    "greenhouse": lambda identifier, company_name, target_roles, existing_job_ids: greenhouse.fetch_jobs(
         identifier, company_name=company_name
     ),
-    "lever": lambda identifier, company_name: lever.fetch_jobs(
+    "lever": lambda identifier, company_name, target_roles, existing_job_ids: lever.fetch_jobs(
         identifier, company_name=company_name
+    ),
+    "workday": lambda identifier, company_name, target_roles, existing_job_ids: workday.fetch_jobs(
+        identifier, target_roles or [""], company_name=company_name, existing_job_ids=existing_job_ids
     ),
 }
 
@@ -38,6 +46,27 @@ def _split_csv(value):
 
 def _existing_job_ids(client):
     return {row["job_id"] for row in client.get_rows("Jobs") if row.get("job_id")}
+
+
+def _fetch(source, identifier, company_name, target_roles, existing_job_ids):
+    if source == "custom-scrape":
+        fetcher = custom_registry.get_fetcher(identifier)
+        if fetcher is None:
+            raise LookupError(
+                f"no custom scraper found for '{identifier}' "
+                f"(expected job_sources/custom/{identifier}.py)"
+            )
+        return fetcher(
+            identifier,
+            company_name=company_name,
+            target_roles=target_roles,
+            existing_job_ids=existing_job_ids,
+        )
+
+    fetcher = SOURCE_FETCHERS.get(source)
+    if fetcher is None:
+        raise LookupError(f"unsupported careers_source '{source}'")
+    return fetcher(identifier, company_name, target_roles, existing_job_ids)
 
 
 def run_watchlist_scan(client, resume_profile, today=None):
@@ -71,19 +100,7 @@ def run_watchlist_scan(client, resume_profile, today=None):
         label = f"watchlist:{company_name}"
 
         try:
-            if source == "workday":
-                raw_jobs = workday.fetch_jobs(
-                    identifier,
-                    target_roles or [""],
-                    company_name=company_name,
-                    existing_job_ids=existing_ids,
-                )
-            else:
-                fetcher = SOURCE_FETCHERS.get(source)
-                if fetcher is None:
-                    summary[label] = f"error: unsupported careers_source '{source}'"
-                    continue
-                raw_jobs = fetcher(identifier, company_name)
+            raw_jobs = _fetch(source, identifier, company_name, target_roles, existing_ids)
         except Exception as e:
             summary[label] = f"error: {e}"
             continue

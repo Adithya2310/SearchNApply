@@ -166,12 +166,64 @@ def test_one_company_fetch_error_does_not_block_others(client, monkeypatch):
 def test_unsupported_careers_source_is_skipped_not_fatal(client, monkeypatch):
     client.append_row(
         "Watchlist",
-        {"company_name": "BigCo", "careers_source": "custom-scrape", "careers_identifier": "bigco", "active": "Y"},
+        {"company_name": "BigCo", "careers_source": "made-up-source", "careers_identifier": "bigco", "active": "Y"},
     )
 
     summary = monitor.run_watchlist_scan(client, RESUME_PROFILE)
 
     assert "unsupported careers_source" in summary["watchlist:BigCo"]
+
+
+def test_custom_scrape_source_with_no_matching_module_is_skipped_not_fatal(client, monkeypatch):
+    # job_sources/custom/doesnotexist.py genuinely doesn't exist — this
+    # exercises the real registry, not a mock, since "no scraper built yet"
+    # for a custom-scrape company must be a normal, non-fatal outcome.
+    client.append_row(
+        "Watchlist",
+        {
+            "company_name": "BigCo",
+            "careers_source": "custom-scrape",
+            "careers_identifier": "doesnotexist",
+            "active": "Y",
+        },
+    )
+
+    summary = monitor.run_watchlist_scan(client, RESUME_PROFILE)
+
+    assert "no custom scraper found for 'doesnotexist'" in summary["watchlist:BigCo"]
+
+
+def test_custom_scrape_source_is_dispatched_via_registry(client, monkeypatch):
+    client.append_row("Config", {"key": "target_roles", "value": "python engineer"})
+    client.append_row(
+        "Watchlist",
+        {"company_name": "BigCo", "careers_source": "custom-scrape", "careers_identifier": "bigco", "active": "Y"},
+    )
+
+    calls = []
+
+    def fake_fetch_jobs(identifier, company_name=None, target_roles=None, existing_job_ids=None):
+        calls.append((identifier, company_name, list(target_roles or []), set(existing_job_ids or set())))
+        return [_job("BigCo", "Python Engineer", "https://bigco/1", "python role")]
+
+    monkeypatch.setattr(
+        monitor.custom_registry,
+        "get_fetcher",
+        lambda slug: fake_fetch_jobs if slug == "bigco" else None,
+    )
+
+    summary = monitor.run_watchlist_scan(client, RESUME_PROFILE, today="2026-08-12")
+
+    assert len(calls) == 1
+    identifier, company_name, target_roles, existing_ids = calls[0]
+    assert identifier == "bigco"
+    assert company_name == "BigCo"
+    assert target_roles == ["python engineer"]
+    assert existing_ids == set()
+
+    assert summary["watchlist:BigCo"] == 1
+    rows = client.get_rows("Jobs")
+    assert rows[0]["source"] == "watchlist:BigCo"
 
 
 def test_workday_source_is_dispatched_with_target_roles_and_existing_ids(client, monkeypatch):

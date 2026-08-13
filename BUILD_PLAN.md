@@ -17,7 +17,16 @@ All 7 items done, committed, pushed to GitHub, and confirmed running unattended:
 
 **Known cleanup items, not blocking, low priority:**
 - `Config.greenhouse_boards`/`lever_companies` still hold placeholder test values (`greenhouse`/`palantir`) — clear these, wasted scan capacity otherwise
-- 5 of 7 Watchlist companies (Oracle, Qualcomm, FM Global, Microsoft, Google) are `inactive` — custom in-house ATS, no scraper built. Careers URLs saved for whenever this is picked up.
+- 5 of 7 Watchlist companies (Oracle, Qualcomm, FM Global, Microsoft, Google) are `inactive` — custom in-house ATS, no scraper built yet.
+
+**Watchlist scaling (Aug 13, 2026):** M6's dispatch now has two tiers (`watchlist/monitor.py`) — adding a Greenhouse/Lever/Workday company is just a new Watchlist row, no code change. Adding a custom-scrape company is one new file at `job_sources/custom/<careers_identifier>.py` implementing `fetch_jobs(identifier, company_name=None, target_roles=None, existing_job_ids=None)`, dynamically loaded by `job_sources/custom/registry.py` — `watchlist/monitor.py` never needs to change. The 5 inactive custom-scrape rows' `careers_identifier` was migrated from a raw URL to the slug this registry expects; their real careers URLs (for whoever builds each scraper) are:
+| Company | `careers_identifier` slug | Careers URL |
+|---|---|---|
+| Oracle | `oracle` | https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/jobsearch/jobs |
+| Qualcomm | `qualcomm` | https://careers.qualcomm.com/careers |
+| FM Global | `fm_global` | https://jobs-fmglobal.icims.com/jobs/intro |
+| Microsoft | `microsoft` | https://careers.microsoft.com/v2/global/en/home.html |
+| Google | `google` | https://www.google.com/about/careers/applications/jobs/results/ |
 
 ---
 
