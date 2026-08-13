@@ -69,16 +69,16 @@ application_kit/
 
 Order changed from the original plan — M15's dependencies now come first.
 
-1. **Expand/curate the Watchlist** — this is now the primary discovery lever, worth real time deciding which companies actually go on it (verify each one's ATS platform before adding — Greenhouse/Lever token vs. custom-scrape path, per DESIGN.md §M6)
-2. **M9 — Resume Tailoring Engine** (Opus) — moved up; M15 needs a tailored resume to attach before it can fill anything, so this is now a hard dependency, not a nice-to-have
-3. **M7 — Local Dashboard (Streamlit)**, specifically the review/confirm screen first — this is where M15's fill-and-confirm step lives, and where "Interested" gets marked
-4. **M15 — Auto-Apply Engine** — start with one company end-to-end per the spec above
-5. **M3 — Profile Updater** — folds into M7 once it exists, keeps resume_profile.json (and thus M9's output) accurate over time
-6. **M8 — Contact Finder** (Hunter.io/Apollo.io) — still valuable for companies without an M15 script yet, or as a parallel outreach track
-7. **M10 — Outreach Generator** (Opus) — drafts only, never auto-sent, per the no-LinkedIn-automation rule
-8. **M11 — Analytics, M12 — Staleness Detector, M13 — Follow-up Reminder** — lower-risk, mechanical; good candidates for Gemini/cheaper models
-9. **M14 — AI Provider Config abstraction** — already partially proven (M4 runs fully AI-free; Phase 1 modules confirmed this works). Extend cleanly to M3/M9/M10 as they're built.
-10. **Testing + README polish** — last
+1. **Expand/curate the Watchlist** — DEFERRED (Aug 13, explicit call): finish the other modules first, but keep the architecture scalable for it — done via the M6 dispatch refactor (see above); no new companies added yet.
+2. **M9 — Resume Tailoring Engine** (Gemini) — DONE (Aug 13). Three-step: AI skill-gap extraction, interactive resolution, AI tailoring. Live-tested against real Sheet data.
+3. **M7 — Local Dashboard (Streamlit)** — Review + Tracker tabs DONE (Aug 13), live-tested via Streamlit's `AppTest` against the real Sheet. Log Manual Application and Update Profile tabs are still stubs (Update Profile needs M3; Log Manual Application not started).
+4. **M15 — Application Kit Generator** (redesigned from Auto-Apply, see above) — DONE (Aug 13). Apply Kit tab live-tested against real Sheet + real Gemini pitch generation.
+5. **M3 — Profile Updater** — NOT STARTED. Folds into M7's "Update Profile" tab (currently a stub); chat-based extraction + diff approval before writing resume_profile.json.
+6. **M8 — Contact Finder** (Hunter.io/Apollo.io) — NOT STARTED.
+7. **M10 — Outreach Generator** (drafts only, never auto-sent) — NOT STARTED.
+8. **M11 — Analytics, M12 — Staleness Detector, M13 — Follow-up Reminder** — NOT STARTED; lower-risk, mechanical, good candidates for Gemini.
+9. **M14 — AI Provider Config abstraction** — DONE for Gemini (live, used by M9/M15). Claude path is code-complete but not live-tested (no `ANTHROPIC_API_KEY` provisioned).
+10. **Testing + README polish** — ONGOING, not finalized (105+ tests passing; README.md itself hasn't been updated since Phase 1 to reflect any of Phase 2's actual modules).
 
 ## Sequencing rules (unchanged)
 
