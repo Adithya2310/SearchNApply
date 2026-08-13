@@ -41,7 +41,7 @@ Everything — jobs the system finds automatically, and jobs you apply to manual
 | hr_linkedin | |
 | outreach_sent | Y/N |
 | outreach_message | what you actually sent, for your records |
-| status | `Applied` / `In Outreach` / `Response Received` / `Interview` / `Rejected` / `Offer` / `No Response` |
+| status | `Interested` / `Applied` / `In Outreach` / `Response Received` / `Interview` / `Rejected` / `Offer` / `No Response` |
 | last_update_date | |
 | next_followup_date | |
 | notes | free text |
@@ -131,7 +131,7 @@ Your skills list, salary range, target roles/locations, resume file path, AI pro
 **M7 — Local Dashboard** (Streamlit, opens in browser on your machine)
 - *Trigger:* You run `streamlit run dashboard.py`
 - *Views:*
-  - **Review tab** — see `Jobs` rows, mark `Interested` or `Ignored`
+  - **Review tab** — see `Jobs` rows, mark `Interested` or `Ignored`. Marking `Interested` creates the `Applications` row (`source_type = auto-discovered`, `linked_job_id` set, `status = Interested`) — this is the one moment a Jobs row and an Applications row get linked automatically — and flips the Jobs row's own status to `Moved to Applications` (this is what that status value is for). Marking `Ignored` just sets `Jobs.status = Ignored`, no Applications row.
   - **Log Manual Application tab** — a form: company, role, URL, HR name/email/LinkedIn, resume version, date, notes. Submitting writes directly into `Applications` with `source_type = manual`
   - **Update Profile tab** — chat box for M3; see the proposed diff and approve/edit/reject before anything is saved to `resume_profile.json`
   - **Tracker tab** — view/edit all `Applications` rows, update status as things progress
