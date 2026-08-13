@@ -1,36 +1,87 @@
 # Build Plan
 
-Full module details are in DESIGN.md — this doc is just the build order and sequencing logic.
+Full module details are in DESIGN.md. This doc is the build order/sequencing — and now, the current status.
 
-## Phase 1 — build first (unattended/passive scanning loop)
+## Phase 1 — COMPLETE, verified live (Aug 12, 2026)
 
-Goal: everything in this phase must be able to run without the user's laptop being on, and without any further AI credits being spent once it's live.
+All 7 items done, committed, pushed to GitHub, and confirmed running unattended:
+- Sheets schema + read/write layer (5 tabs)
+- M2 Resume Parser
+- M1 Job Aggregator (Greenhouse/Lever/Adzuna/JSearch)
+- M4 Matching/Scoring Engine (rule-based, `ai_provider=none` at runtime — confirmed zero API dependency)
+- M5 Gmail Digest Sender
+- M6 Company Watchlist Monitor
+- GitHub Actions orchestration (`scan.yml` every ~30min, `watchlist.yml` every ~10min)
 
-1. **Sheet schema + read/write layer** — build this first; every module below depends on it. Schema is in DESIGN.md Section 2 (5 tabs: Jobs, Applications, Contacts, Config, Watchlist).
-2. **M2 — Resume Parser** — one-time parse of the user's resume into `resume_profile.json`.
-3. **M1 — Job Aggregator** — Greenhouse/Lever/Adzuna/JSearch integrations, dedup logic.
-4. **M4 — Matching/Scoring Engine** — design the scoring logic carefully (this benefits from stronger reasoning — use Opus for designing the algorithm even if Sonnet implements it). Score = skill overlap + salary fit + location fit.
-5. **M5 — Gmail Digest Sender** — SMTP + App Password (not OAuth, keep it simple). Summarizes new matched jobs.
-6. **M6 — Company Watchlist Monitor** — reuses M4's scoring logic. Separate, more frequent schedule than M1. Sends immediate standalone emails, not bundled into the M5 digest.
-7. **GitHub Actions orchestration** — wire M1, M4, M5, M6 into scheduled workflows. Confirm they actually run end-to-end on the schedule before considering Phase 1 done.
+**Verified**: both workflows have run automatically on schedule with no failures, Jobs sheet is populating, digest emails are arriving unprompted.
 
-**Definition of done for Phase 1:** the system finds jobs, scores them, and emails the user a digest — completely unattended — plus watchlisted companies trigger immediate alerts. No dashboard, no outreach, no contact-finding yet.
+**Known cleanup items, not blocking, low priority:**
+- `Config.greenhouse_boards`/`lever_companies` still hold placeholder test values (`greenhouse`/`palantir`) — clear these, wasted scan capacity otherwise
+- 5 of 7 Watchlist companies (Oracle, Qualcomm, FM Global, Microsoft, Google) are `inactive` — custom in-house ATS, no scraper built. Careers URLs saved for whenever this is picked up.
 
-## Phase 2 — build second (active/decision-making side)
+---
 
-8. **M7 — Local Dashboard** (Streamlit). Tabs: Review, Log Manual Application, Update Profile, Tracker. Runs only when the user opens it — never scheduled.
-9. **M3 — Profile Updater** — lives inside the M7 dashboard's "Update Profile" tab. Chat-based extraction (Sonnet) + mandatory diff approval before any write to `resume_profile.json`.
-10. **M8 — Contact Finder** — Hunter.io/Apollo.io integration, checks `Contacts` sheet before re-querying.
-11. **M9 — Resume Tailoring Engine** (Opus) — rewrites resume per job description.
-12. **M10 — Outreach Generator** (Opus) — drafts recruiter email + LinkedIn message. Drafts only — never auto-sends.
-13. **M11 — Analytics** — response rate by source/resume version/outreach style.
-14. **M12 — Duplicate/Staleness Detector** — folds into M1's run, flags stale/reposted listings.
-15. **M13 — Follow-up Reminder** — folds into the scheduled GitHub Actions run, surfaces in the M5 digest.
-16. **M14 — AI Provider Config abstraction** — should ideally be designed alongside Phase 1 (M4 in particular), but full implementation/testing across all AI-calling modules happens here.
-17. **Testing + README polish** — end-to-end run-through, make sure a future session (with or without this same AI) can pick the project up cleanly.
+## Strategic pivot (Aug 12, post-Phase-1)
 
-## Sequencing rules
+**Original Phase 1 (M1 broad job aggregation) turned out to be lower value than expected** — Naukri/LinkedIn already cover broad discovery well. The real gap this system should fill is different: **actively monitoring specific target companies and turning a match into a filled, ready-to-submit application with minimal manual effort.**
 
-- Don't start a module until its dependencies are working and tested — e.g. don't build M4 (Matching) before `resume_profile.json` exists from M2.
-- Within Phase 1, prioritize "runs end-to-end, even if rough" over "polished." Polish is explicitly a Phase 2 concern.
-- Model selection: Opus only for M4 (scoring logic design), M9 (resume tailoring), M10 (outreach generation) — everything else should default to Sonnet to conserve credits.
+This does not throw away Phase 1 — M6 (Watchlist), the Sheets backbone, resume_profile.json, and M4 scoring are all direct dependencies of the new priority. M1 keeps running (it's free, already live) but is deprioritized as a source of value.
+
+**New centerpiece: M15 — Auto-Apply Engine.**
+
+---
+
+## M15 — Auto-Apply Engine (new module, full spec)
+
+**Goal**: for watchlisted companies, when a posting matches, fill out that company's actual application form automatically — using a separate, purpose-built script per company (not one generic solution; portal login flows and forms differ too much company to company).
+
+**Design decision — fill-and-confirm, NOT full auto-submit:**
+The script does everything up to the final submit button — logs in, navigates to the job, fills every field, attaches the tailored resume — then **stops and shows the user a review/confirm screen** before the actual submit click.
+
+Reasons this is the default, not just a suggestion:
+- Company portals (especially Workday-based ones) often have CAPTCHA/bot-detection specifically targeting automated submission — a human present at the final step handles this naturally
+- Most portal ToS prohibit automated submission; a detected pattern risks the account being flagged at exactly the companies being targeted
+- Mistakes here are irreversible in a way draft emails aren't — a wrong resume attached or a bad field fill can't be unsent once submitted
+- M4's scoring can false-positive (confirmed during Phase 1 testing) — auto-submitting on a scoring engine still being tuned is too much trust, too early
+
+Full auto-submit can be reconsidered later, per-company, once a script has proven reliable over many manual-confirm runs — not the v1 default.
+
+**Architecture**
+```
+applicators/
+  base.py              # shared interface: login(), navigate_to_job(),
+                        # fill_application(), review_and_confirm()
+  <company>/
+    apply.py           # that company's specific login + form flow
+    selectors.py       # CSS/XPath selectors isolated here, so a portal
+                        # redesign only breaks this one file
+```
+- **Tooling: Playwright**, not Selenium — better handling of dynamic/JS-heavy SPAs (Workday and similar modern portals)
+- **Orchestrator** (`run_applications.py`): reads `Applications` rows marked `Interested` for companies with a script available, dispatches to the right `applicators/<company>/apply.py`, logs result back to the Sheet
+- **Credentials**: stored via Python `keyring` (OS-level encryption — macOS Keychain), never in `.env`, never in the Sheet, never in any file. This module is **strictly local-only** — never runs in GitHub Actions, same reasoning as why outreach-sending stays manual: irreversible actions + credentials belong where a human is present.
+- **Trigger**: a "Fill Application" button in the M7 dashboard, not automatic/scheduled
+
+**Build order for M15 itself**: pick one company, build its script fully end-to-end (login → fill → confirm-screen) and prove the pattern works before replicating to others. Don't parallelize across companies until the first one is solid.
+
+---
+
+## Phase 2 — reprioritized (Aug 12–18)
+
+Order changed from the original plan — M15's dependencies now come first.
+
+1. **Expand/curate the Watchlist** — this is now the primary discovery lever, worth real time deciding which companies actually go on it (verify each one's ATS platform before adding — Greenhouse/Lever token vs. custom-scrape path, per DESIGN.md §M6)
+2. **M9 — Resume Tailoring Engine** (Opus) — moved up; M15 needs a tailored resume to attach before it can fill anything, so this is now a hard dependency, not a nice-to-have
+3. **M7 — Local Dashboard (Streamlit)**, specifically the review/confirm screen first — this is where M15's fill-and-confirm step lives, and where "Interested" gets marked
+4. **M15 — Auto-Apply Engine** — start with one company end-to-end per the spec above
+5. **M3 — Profile Updater** — folds into M7 once it exists, keeps resume_profile.json (and thus M9's output) accurate over time
+6. **M8 — Contact Finder** (Hunter.io/Apollo.io) — still valuable for companies without an M15 script yet, or as a parallel outreach track
+7. **M10 — Outreach Generator** (Opus) — drafts only, never auto-sent, per the no-LinkedIn-automation rule
+8. **M11 — Analytics, M12 — Staleness Detector, M13 — Follow-up Reminder** — lower-risk, mechanical; good candidates for Gemini/cheaper models
+9. **M14 — AI Provider Config abstraction** — already partially proven (M4 runs fully AI-free; Phase 1 modules confirmed this works). Extend cleanly to M3/M9/M10 as they're built.
+10. **Testing + README polish** — last
+
+## Sequencing rules (unchanged)
+
+- Don't start a module until its dependencies are working and tested
+- Model selection: Claude (Opus for design/quality-sensitive work like M9/M10 scoring-adjacent logic, Sonnet for standard implementation) for anything where output quality matters (goes to a real recruiter, or is genuinely hard reasoning); Gemini for mechanical/routine work (boilerplate, CRUD, simple bug fixes) to conserve Claude credit balance
+- No more artificial time pressure — Aug 18 is the real deadline, review outputs properly rather than batching blind
