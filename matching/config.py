@@ -24,6 +24,9 @@ def load_config(client):
     raw = {row["key"]: row["value"] for row in client.get_rows("Config") if row.get("key")}
     return {
         "ai_provider": (str(raw.get("ai_provider", "none")).strip().lower() or "none"),
+        # Per-provider model override (e.g. "gemini-2.5-pro") — blank means
+        # the provider module's own default. See ai_provider/provider.py.
+        "ai_model": raw.get("ai_model", ""),
         "match_threshold": _num(raw.get("match_threshold"), DEFAULTS["match_threshold"]),
         "weight_skill": _num(raw.get("weight_skill"), DEFAULTS["weight_skill"]),
         "weight_salary": _num(raw.get("weight_salary"), DEFAULTS["weight_salary"]),

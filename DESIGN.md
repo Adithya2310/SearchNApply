@@ -143,11 +143,14 @@ Your skills list, salary range, target roles/locations, resume file path, AI pro
 - *Process:* Queries Hunter.io/Apollo for recruiter name/email; checks `Contacts` sheet first to avoid re-lookup
 - *Output:* Fills `hr_name`, `hr_email`, `hr_linkedin` in `Applications`; adds/updates `Contacts` row
 
-**M9 — Resume Tailoring Engine** *(Opus)*
-- *Trigger:* Same "Process" click
-- *Input:* Job description + `resume_profile.json`
-- *Process:* Rewrites/reorders resume content to match this specific JD
-- *Output:* Tailored resume file, saved locally, filename logged in `Applications.resume_version_used`
+**M9 — Resume Tailoring Engine** *(Gemini by default, swappable — see M14)*
+- *Trigger:* Same "Process" click in M7 (dashboard not built yet — for now, `scripts/tailor_resume.py --job-id <id>` or `--jd-file <path>`)
+- *Input:* Job description + `resume_profile.json` + `Config.ai_provider`/`ai_model`
+- *Process, three steps, not a single one-shot generate:*
+  1. **Gap detection** (`resume_tailor/gaps.py`) — one AI call extracts the JD's required skills as a list; diffed (via `matching/aliases.canonicalize`, same alias-collapsing used for scoring) against everything already in `resume_profile.json` to find genuine gaps.
+  2. **Interactive resolution** — for each gap skill, the user is asked: already know it (add to profile + resume), planning to learn it (noted, not added to either), or skip. Confirmed skills are merged into `resume_profile.json` immediately — this *is* the approval step, same principle as M3's diff-approval, just triggered from M9 instead of the chat box.
+  3. **Tailoring** (`resume_tailor/tailor.py`) — a second AI call rewrites/reorders resume content against the JD, given the now-current profile and the resolved skill list as keywords to weave in.
+- *Output:* An ATS-friendly (plain text, standard section headers, no tables/graphics) tailored resume file under `tailored_resumes/`, shown to the user for review before being written; filename logged in `Applications.resume_version_used` if a linked Applications row already exists.
 
 **M10 — Outreach Generator** *(Opus)*
 - *Trigger:* Same "Process" click
@@ -174,7 +177,8 @@ Your skills list, salary range, target roles/locations, resume file path, AI pro
 - *Why this matters for manual logging:* this is the actual payoff of logging manual applications — you stop losing track of the ones you applied to outside the system
 
 **M14 — AI Provider Config**
-- Not a "module" you interact with — an abstraction layer every AI-calling module (M3, M4, M9, M10) reads from. Config sheet says `claude` / `gemini` / `none`; code branches accordingly. Built this way from day one so switching later is a one-line config change, not a rewrite.
+- Not a "module" you interact with — an abstraction layer every AI-calling module (M3, M4, M9, M10) reads from. Implemented as `ai_provider/provider.py`, dispatching on `Config.ai_provider` (`claude` / `gemini` / `none`) with an optional `Config.ai_model` override per provider. Since it reads the Sheet, not an env var, switching provider/model is a Config edit — and will be directly wireable to a dropdown once M7's UI exists, with no code change either way.
+- `ai_provider/gemini.py` is live (in use by M9 as of Aug 13, 2026). `ai_provider/claude.py` is code-complete but not live-tested — no `ANTHROPIC_API_KEY` provisioned yet.
 
 ---
 

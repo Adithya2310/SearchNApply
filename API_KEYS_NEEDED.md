@@ -17,8 +17,8 @@ The user needs to create these accounts and provide the resulting keys/credentia
 | Service | Used by | Free tier? | Notes |
 |---|---|---|---|
 | Hunter.io or Apollo.io | M8 Contact Finder | Yes, limited (~25-50 lookups/month free) | Pick one to start; both have similar free tiers |
-| Anthropic API key | M3, M4, M9, M10 (when AI_PROVIDER=claude) | No — paid, this is separate from Claude Code credits | Only needed if AI_PROVIDER is set to claude for the *running* system, not the building |
-| Gemini API key | M3, M4, M9, M10 (when AI_PROVIDER=gemini) | Yes, generous free tier | The intended low-cost default per the user's plan |
+| Anthropic API key | M3, M4, M9, M10 (when Config.ai_provider=claude) | No — paid, this is separate from Claude Code credits | Code-complete (`ai_provider/claude.py`) but not live-tested — no key provisioned yet |
+| Gemini API key | M3, M4, M9, M10 (when Config.ai_provider=gemini) | Yes, generous free tier | Live in use as of M9 (Aug 13, 2026) — the actual provider/model choice lives in the Config sheet (`ai_provider`/`ai_model`), not an env var, so it's swappable without a redeploy |
 
 ## Not needed / deliberately excluded
 
