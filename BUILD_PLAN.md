@@ -71,14 +71,14 @@ Order changed from the original plan — M15's dependencies now come first.
 
 1. **Expand/curate the Watchlist** — DEFERRED (Aug 13, explicit call): finish the other modules first, but keep the architecture scalable for it — done via the M6 dispatch refactor (see above); no new companies added yet.
 2. **M9 — Resume Tailoring Engine** (Gemini) — DONE (Aug 13). Three-step: AI skill-gap extraction, interactive resolution, AI tailoring. Live-tested against real Sheet data.
-3. **M7 — Local Dashboard (Streamlit)** — Review + Tracker tabs DONE (Aug 13), live-tested via Streamlit's `AppTest` against the real Sheet. Log Manual Application and Update Profile tabs are still stubs (Update Profile needs M3; Log Manual Application not started).
+3. **M7 — Local Dashboard (Streamlit)** — Review + Tracker + Apply Kit + Update Profile tabs DONE (Aug 13), live-tested via Streamlit's `AppTest` against the real Sheet. Only Log Manual Application is still a stub.
 4. **M15 — Application Kit Generator** (redesigned from Auto-Apply, see above) — DONE (Aug 13). Apply Kit tab live-tested against real Sheet + real Gemini pitch generation.
-5. **M3 — Profile Updater** — NOT STARTED. Folds into M7's "Update Profile" tab (currently a stub); chat-based extraction + diff approval before writing resume_profile.json.
-6. **M8 — Contact Finder** (Hunter.io/Apollo.io) — NOT STARTED.
-7. **M10 — Outreach Generator** (drafts only, never auto-sent) — NOT STARTED.
+5. **M3 — Profile Updater** — DONE (Aug 13). Chat-style free text → AI proposal → diff approval → `resume_profile.json` write + `profile_updates_log.jsonl` audit trail. Live-tested via `AppTest`.
+6. **M8 — Contact Finder** (Hunter.io/Apollo.io) — DEPRIORITIZED (Aug 13, explicit call). Both are paid, and a company-domain search is unlikely to surface the specific recruiter for a specific req at the large enterprises on this user's target list — low expected ROI for the cost. Not built. A free alternative (pre-built LinkedIn/Google search links per application, no API) was proposed but not yet built either.
+7. **M10 — Outreach Generator** — DONE (Aug 13). Email + LinkedIn connection note drafts (Gemini), wired into the Apply Kit tab; works without M8's contact info (falls back to a generic greeting). LinkedIn's 300-char cap enforced in code. Live-tested via `AppTest` against a temporary real Applications row (deleted after verifying), confirming outreach_message accumulates multiple sent drafts rather than overwriting.
 8. **M11 — Analytics, M12 — Staleness Detector, M13 — Follow-up Reminder** — NOT STARTED; lower-risk, mechanical, good candidates for Gemini.
-9. **M14 — AI Provider Config abstraction** — DONE for Gemini (live, used by M9/M15). Claude path is code-complete but not live-tested (no `ANTHROPIC_API_KEY` provisioned).
-10. **Testing + README polish** — ONGOING, not finalized (105+ tests passing; README.md itself hasn't been updated since Phase 1 to reflect any of Phase 2's actual modules).
+9. **M14 — AI Provider Config abstraction** — DONE for Gemini (live, used by M3/M9/M10/M15). Claude path is code-complete but not live-tested (no `ANTHROPIC_API_KEY` provisioned). Note: Gemini's free tier is capped at 20 requests/day per model — hit this cap during Aug 13's testing.
+10. **Testing + README polish** — ONGOING, not finalized (132 tests passing; README.md itself hasn't been updated since Phase 1 to reflect any of Phase 2's actual modules).
 
 ## Sequencing rules (unchanged)
 

@@ -158,6 +158,7 @@ Your skills list, salary range, target roles/locations, resume file path, AI pro
 - *Input:* Job description + contact info + your resume profile
 - *Process:* Drafts recruiter email + LinkedIn connection message
 - *Output:* Draft shown in dashboard for your review/edit; you send manually; once sent, you mark `outreach_sent = Y` and paste the final version into `outreach_message`
+- *Implemented* (Aug 13, 2026) as `outreach/generate.py` (Gemini via M14, not Opus specifically — same rationale as M9/M3), wired into the Apply Kit tab right below M9's pitch section. Two independent drafts, generated on demand: an email (subject + body, JSON) and a LinkedIn connection note — the latter has LinkedIn's hard 300-character cap enforced in code (truncated at a word boundary), not just asked for in the prompt, since models don't count characters reliably. "Contact info" from M8 is optional, not required — M8 itself was deprioritized (see BUILD_PLAN.md: paid API, low expected value for the mostly-large-enterprise target list), so drafts fall back to a generic-but-warm greeting when no contact name exists rather than blocking on it. Marking either draft "sent" appends to `Applications.outreach_message` (not overwrites), so sending both an email and a LinkedIn note for the same application keeps both records.
 
 ### Support modules (run quietly in the background)
 

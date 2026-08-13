@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from application_kit.fields import build_fields
 from application_kit.pitch import generate_pitch
 from matching.config import load_config
+from outreach.generate import generate_email_draft, generate_linkedin_note
 from profile_updater.apply import add_bullet_to_project, add_bullet_to_work_experience, add_new_project
 from profile_updater.extract import extract_update
 from profile_updater.log import append_log_entry
@@ -230,22 +231,76 @@ def render_apply_kit_tab(client):
         st.caption(label)
         st.code(value or "(blank)", language=None)
 
-    st.divider()
-    st.markdown("**Why I'm interested (AI-generated, review before pasting)**")
-
     linked_job = None
     if app_row.get("linked_job_id"):
         linked_job = next((r for r in client.get_rows("Jobs") if r["job_id"] == app_row["linked_job_id"]), None)
+    job_description = (
+        f"{linked_job.get('title', '')}\n\n{linked_job['description_raw']}"
+        if linked_job and linked_job.get("description_raw")
+        else None
+    )
+
+    st.divider()
+    st.markdown("**Why I'm interested (AI-generated, review before pasting)**")
 
     pitch_key = f"pitch_{app_row['app_id']}"
-    if linked_job and linked_job.get("description_raw"):
-        if st.button("Generate pitch", key=f"generate_{app_row['app_id']}"):
-            job_description = f"{linked_job.get('title', '')}\n\n{linked_job['description_raw']}"
+    if job_description:
+        if st.button("Generate pitch", key=f"generate_pitch_{app_row['app_id']}"):
             st.session_state[pitch_key] = generate_pitch(resume_profile, job_description, config)
         if pitch_key in st.session_state:
             st.code(st.session_state[pitch_key], language=None)
     else:
         st.info("No job description linked to this application — can't generate a pitch for it yet.")
+
+    st.divider()
+    render_outreach_section(client, app_row, resume_profile, job_description, config)
+
+
+def _append_outreach_message(client, app_row, new_message):
+    existing = (app_row.get("outreach_message") or "").strip()
+    combined = f"{existing}\n\n---\n\n{new_message}" if existing else new_message
+    client.update_row(
+        "Applications",
+        "app_id",
+        app_row["app_id"],
+        {"outreach_sent": "Y", "outreach_message": combined, "last_update_date": _today()},
+    )
+
+
+def render_outreach_section(client, app_row, resume_profile, job_description, config):
+    st.markdown("**Outreach drafts (M10) — review before sending, nothing is sent for you**")
+    if not job_description:
+        st.info("No job description linked to this application — can't draft outreach for it yet.")
+        return
+
+    contact_name = app_row.get("hr_name") or None
+    company, role = app_row.get("company", ""), app_row.get("role", "")
+
+    email_key = f"outreach_email_{app_row['app_id']}"
+    if st.button("Generate email draft", key=f"generate_email_{app_row['app_id']}"):
+        st.session_state[email_key] = generate_email_draft(resume_profile, job_description, company, role, contact_name, config)
+    if email_key in st.session_state:
+        draft = st.session_state[email_key]
+        subject = st.text_input("Subject", value=draft["subject"], key=f"{email_key}_subject")
+        body = st.text_area("Body", value=draft["body"], height=200, key=f"{email_key}_body")
+        if st.button("Mark email sent → save to Applications", key=f"{email_key}_save"):
+            _append_outreach_message(client, app_row, f"EMAIL\nSubject: {subject}\n\n{body}")
+            st.success("Saved — remember to actually send it yourself.")
+            st.rerun()
+
+    st.markdown("&nbsp;")
+    linkedin_key = f"outreach_linkedin_{app_row['app_id']}"
+    if st.button("Generate LinkedIn note", key=f"generate_linkedin_{app_row['app_id']}"):
+        st.session_state[linkedin_key] = generate_linkedin_note(resume_profile, job_description, company, role, contact_name, config)
+    if linkedin_key in st.session_state:
+        note = st.text_area("LinkedIn connection note", value=st.session_state[linkedin_key], height=100, key=f"{linkedin_key}_text")
+        st.caption(f"{len(note)}/300 characters")
+        if len(note) > 300:
+            st.warning("Over LinkedIn's 300-character limit — trim it before sending.")
+        if st.button("Mark LinkedIn note sent → save to Applications", key=f"{linkedin_key}_save"):
+            _append_outreach_message(client, app_row, f"LINKEDIN\n{note}")
+            st.success("Saved — remember to actually send it yourself.")
+            st.rerun()
 
 
 def _target_options(resume_profile):
