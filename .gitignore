@@ -5,4 +5,4 @@ __pycache__/
 .venv/
 .pytest_cache/
 .DS_Store
-*old.md
+BUILD_PLAN*
