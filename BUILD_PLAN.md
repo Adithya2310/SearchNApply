@@ -36,41 +36,32 @@ All 7 items done, committed, pushed to GitHub, and confirmed running unattended:
 
 This does not throw away Phase 1 — M6 (Watchlist), the Sheets backbone, resume_profile.json, and M4 scoring are all direct dependencies of the new priority. M1 keeps running (it's free, already live) but is deprioritized as a source of value.
 
-**New centerpiece: M15 — Auto-Apply Engine.**
+**New centerpiece: M15 — Application Kit Generator** (redesigned Aug 13, 2026 — see below; the original login-automation spec was scrapped before any of it was built).
 
 ---
 
-## M15 — Auto-Apply Engine (new module, full spec)
+## M15 — Application Kit Generator (redesigned Aug 13, 2026)
 
-**Goal**: for watchlisted companies, when a posting matches, fill out that company's actual application form automatically — using a separate, purpose-built script per company (not one generic solution; portal login flows and forms differ too much company to company).
+**Original spec (never built) was login automation**: a Playwright script per company that logs into the real portal, fills the form, and stops for a manual confirm before submit. Scrapped in favor of something strictly safer, before writing any of it: even a fill-and-confirm design still means automated login traffic against a real account on a portal that may fingerprint/CAPTCHA/rate-limit automated sessions — the ban risk lives in the login step itself, not just the submit step, and there's no way to fully eliminate it while still automating login. Not worth the risk for what it saves.
 
-**Design decision — fill-and-confirm, NOT full auto-submit:**
-The script does everything up to the final submit button — logs in, navigates to the job, fills every field, attaches the tailored resume — then **stops and shows the user a review/confirm screen** before the actual submit click.
-
-Reasons this is the default, not just a suggestion:
-- Company portals (especially Workday-based ones) often have CAPTCHA/bot-detection specifically targeting automated submission — a human present at the final step handles this naturally
-- Most portal ToS prohibit automated submission; a detected pattern risks the account being flagged at exactly the companies being targeted
-- Mistakes here are irreversible in a way draft emails aren't — a wrong resume attached or a bad field fill can't be unsent once submitted
-- M4's scoring can false-positive (confirmed during Phase 1 testing) — auto-submitting on a scoring engine still being tuned is too much trust, too early
-
-Full auto-submit can be reconsidered later, per-company, once a script has proven reliable over many manual-confirm runs — not the v1 default.
+**New goal**: for a job the user has marked `Interested`, generate every value a typical application form asks for from `resume_profile.json` + the job data, and display them in the M7 dashboard as copy-paste-ready fields. The user manually opens the real portal, logs in themselves, and pastes each value in. Zero automated interaction with any company's real site — no login, no form submission, no browser automation, no credential storage at all.
 
 **Architecture**
 ```
-applicators/
-  base.py              # shared interface: login(), navigate_to_job(),
-                        # fill_application(), review_and_confirm()
-  <company>/
-    apply.py           # that company's specific login + form flow
-    selectors.py       # CSS/XPath selectors isolated here, so a portal
-                        # redesign only breaks this one file
+application_kit/
+  fields.py   # pure function: resume_profile + job/application row + Config
+              # -> ordered {label: value} dict of standard form fields
+              # (name, contact info, current employer/title, years of
+              # experience, education, desired salary, resume filename).
+              # No AI — deterministic, same profile data M4/M9 already use.
+  pitch.py    # one AI call: short "why I'm interested in this role" blurb,
+              # grounded only in real profile facts (same anti-fabrication
+              # rule as M9) — the one field that's genuinely job-specific
+              # and worth generating rather than reusing verbatim.
 ```
-- **Tooling: Playwright**, not Selenium — better handling of dynamic/JS-heavy SPAs (Workday and similar modern portals)
-- **Orchestrator** (`run_applications.py`): reads `Applications` rows marked `Interested` for companies with a script available, dispatches to the right `applicators/<company>/apply.py`, logs result back to the Sheet
-- **Credentials**: stored via Python `keyring` (OS-level encryption — macOS Keychain), never in `.env`, never in the Sheet, never in any file. This module is **strictly local-only** — never runs in GitHub Actions, same reasoning as why outreach-sending stays manual: irreversible actions + credentials belong where a human is present.
-- **Trigger**: a "Fill Application" button in the M7 dashboard, not automatic/scheduled
-
-**Build order for M15 itself**: pick one company, build its script fully end-to-end (login → fill → confirm-screen) and prove the pattern works before replicating to others. Don't parallelize across companies until the first one is solid.
+- **Trigger**: an "Apply Kit" tab in the M7 dashboard — pick an `Interested`/`Applied` Applications row, see every field as a copyable block
+- **No new external dependencies**: no Playwright, no `keyring` — this is pure data generation + Streamlit display, reusing `ai_provider`/M14 for the one generated field
+- **Still strictly manual for the actual submission** — same "nothing sends/submits itself" principle as everywhere else in this system, just applied one step earlier (no login either, not just no submit)
 
 ---
 

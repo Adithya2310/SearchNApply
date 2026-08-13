@@ -7,6 +7,7 @@ side. Review + Tracker are live; Log Manual Application and Update Profile
 are stubs until M3 is built (see BUILD_PLAN.md's reprioritized order).
 """
 
+import json
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -18,6 +19,9 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
+from application_kit.fields import build_fields
+from application_kit.pitch import generate_pitch
+from matching.config import load_config
 from sheets.client import SheetsClient
 from sheets.schema import SHEETS
 
@@ -176,17 +180,74 @@ def render_tracker_tab(client):
             st.info("No changes to save.")
 
 
+def _load_resume_profile(client):
+    # load_config() only exposes M4's scoring keys, not resume_profile_path
+    # — same reason scripts/run_matching.py, scripts/tailor_resume.py, etc.
+    # read it from a raw Config dict instead.
+    config_rows = {r["key"]: r["value"] for r in client.get_rows("Config") if r.get("key")}
+    path = config_rows.get("resume_profile_path") or "resume_profile.json"
+    with open(path) as f:
+        return json.load(f)
+
+
+def render_apply_kit_tab(client):
+    st.subheader("Apply Kit")
+    st.caption(
+        "Copy-paste-ready values for a real application form — generated from your profile, "
+        "not submitted anywhere. You still log in and paste these yourself."
+    )
+    app_rows = client.get_rows("Applications")
+    if not app_rows:
+        st.info("No applications yet — mark a job Interested in the Review tab first.")
+        return
+
+    labels = [f"{r.get('company', '')} — {r.get('role', '')} ({r.get('status', '')})" for r in app_rows]
+    choice = st.selectbox("Application", options=range(len(app_rows)), format_func=lambda i: labels[i])
+    app_row = app_rows[choice]
+
+    resume_profile = _load_resume_profile(client)
+    config = load_config(client)
+
+    job_info = {"company": app_row.get("company", ""), "title": app_row.get("role", ""), "url": app_row.get("job_url", "")}
+    fields = build_fields(
+        resume_profile, job_info, config=config, resume_filename=app_row.get("resume_version_used") or None
+    )
+
+    for label, value in fields:
+        st.caption(label)
+        st.code(value or "(blank)", language=None)
+
+    st.divider()
+    st.markdown("**Why I'm interested (AI-generated, review before pasting)**")
+
+    linked_job = None
+    if app_row.get("linked_job_id"):
+        linked_job = next((r for r in client.get_rows("Jobs") if r["job_id"] == app_row["linked_job_id"]), None)
+
+    pitch_key = f"pitch_{app_row['app_id']}"
+    if linked_job and linked_job.get("description_raw"):
+        if st.button("Generate pitch", key=f"generate_{app_row['app_id']}"):
+            job_description = f"{linked_job.get('title', '')}\n\n{linked_job['description_raw']}"
+            st.session_state[pitch_key] = generate_pitch(resume_profile, job_description, config)
+        if pitch_key in st.session_state:
+            st.code(st.session_state[pitch_key], language=None)
+    else:
+        st.info("No job description linked to this application — can't generate a pitch for it yet.")
+
+
 def main():
     client = get_client()
     st.title("Job Search Dashboard")
 
-    tab_review, tab_tracker, tab_log, tab_profile = st.tabs(
-        ["Review", "Tracker", "Log Manual Application", "Update Profile"]
+    tab_review, tab_tracker, tab_apply, tab_log, tab_profile = st.tabs(
+        ["Review", "Tracker", "Apply Kit", "Log Manual Application", "Update Profile"]
     )
     with tab_review:
         render_review_tab(client)
     with tab_tracker:
         render_tracker_tab(client)
+    with tab_apply:
+        render_apply_kit_tab(client)
     with tab_log:
         st.info("Coming soon — manual application logging isn't built yet.")
     with tab_profile:
