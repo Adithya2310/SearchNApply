@@ -119,7 +119,7 @@ Job location strings are messy: `"Ontario"`, `"London, United Kingdom"`,
    remote job AND remote_ok AND not geo-restricted away from user_country -> 1.0
    location matches a target (city/region/country)                       -> 1.0
    same country as a target, different city                              -> 0.6
-   location present, no match, not remote                                -> 0.2   (floor is Config-tunable for relocators)
+   location present, no match, not remote                                -> 0.0
    job location empty                                                    -> UNKNOWN
    target_locations empty (user set no preference)                       -> UNKNOWN
    ```
@@ -189,7 +189,7 @@ failure must **fall back to the rule-based scorer**, never crash the scan.
 
 | key | default | meaning |
 |---|---|---|
-| `match_threshold` | `40` | score `<` this ⇒ status set to `Ignored` |
+| `match_threshold` | `75` | score `<` this ⇒ status set to `Ignored` |
 | `weight_skill` / `weight_salary` / `weight_location` | `0.60/0.15/0.25` | dimension weights |
 | `skill_saturation` | `4.0` | weighted-hit sum that saturates skill_score to 1.0 |
 | `core_skills` | *(derived)* | comma-list; overrides the core-skill heuristic |
