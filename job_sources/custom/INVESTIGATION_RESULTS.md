@@ -10,8 +10,8 @@ Date: 2024-08-14
 | Oracle     | Oracle Fusion Recruiting | ✅ Yes    | Implemented         |
 | FM Global  | iCIMS (Jibe frontend)    | ✅ Yes    | Implemented         |
 | Google     | Proprietary (in-house)   | ❌ No     | Not viable          |
-| Microsoft  | Eightfold AI             | ❌ No     | Not viable          |
-| Qualcomm   | Eightfold AI             | ❌ No     | Not viable          |
+| Microsoft  | Eightfold AI             | ✅ Sitemap | Implemented         |
+| Qualcomm   | Eightfold AI             | ✅ Sitemap | Implemented         |
 
 ---
 
@@ -43,6 +43,18 @@ Date: 2024-08-14
   could potentially be extracted if more Jibe-powered sites are added.
 - **Live verified:** Real postings returned (e.g. "Commercial Facilities Engineer").
 
+### Microsoft (`job_sources/custom/microsoft.py`)
+- **API:** No direct JSON API (Eightfold blocks unauthenticated requests).
+- **Platform:** Eightfold AI (at apply.careers.microsoft.com).
+- **Pattern:** Two-stage via Sitemap — `GET /careers/sitemap.xml?domain=microsoft.com` to get job URLs and basic titles from slugs, then `GET` individual job pages to extract full `JobPosting` data from embedded `application/ld+json`.
+- **Live verified:** Over 2,000+ jobs found in sitemap.
+
+### Qualcomm (`job_sources/custom/qualcomm.py`)
+- **API:** No direct JSON API (Eightfold blocks unauthenticated requests).
+- **Platform:** Eightfold AI (at careers.qualcomm.com).
+- **Pattern:** Two-stage via Sitemap — identical to Microsoft, using `/careers/sitemap.xml?domain=qualcomm.com` and individual job page JSON-LD parsing.
+- **Live verified:** Over 1,900+ jobs found in sitemap.
+
 ---
 
 ## Not Viable — No Usable API
@@ -56,25 +68,6 @@ Date: 2024-08-14
   impossible to cleanly reverse-engineer with standard HTTP requests.
 - **Recommendation:** Keep inactive in the Watchlist.
 
-### Microsoft
-- **Platform:** Recently migrated from a custom Adobe AEM frontend to
-  Eightfold AI (at apply.careers.microsoft.com). The old gcsservices API
-  no longer resolves.
-- **Why not viable:** The Eightfold API endpoint
-  (`/api/apply/v2/jobs?domain=microsoft.com`) returns `403 Forbidden`
-  with `{"message": "Not authorized for PCSX"}`. Requires authenticated
-  sessions and CSRF tokens that cannot be obtained via simple HTTP requests.
-- **Recommendation:** Keep inactive in the Watchlist.
-
-### Qualcomm
-- **Platform:** Eightfold AI (same as Microsoft's new platform).
-- **Why not viable:** Same Eightfold auth-blocking issue as Microsoft.
-  The `/api/apply/v2/jobs?domain=qualcomm.com` endpoint returns
-  `403 Forbidden` with the same "Not authorized for PCSX" message.
-- **Recommendation:** Keep inactive in the Watchlist. If Eightfold's
-  auth model changes in the future, both Microsoft and Qualcomm could
-  become viable simultaneously.
-
 ---
 
 ## Patterns Discovered
@@ -85,8 +78,9 @@ structures (`/api/jobs` returning paginated JSON with full descriptions).
 If more Jibe-powered sites are added to the Watchlist, a generic
 `job_sources/jibe.py` could be extracted similar to `job_sources/workday.py`.
 
-### Eightfold AI (blocked)
+### Eightfold AI (Sitemap + JSON-LD)
 Both Microsoft and Qualcomm use Eightfold AI, which actively blocks
-unauthenticated API access. This is a platform-level limitation, not a
-per-tenant configuration, so all Eightfold-powered sites are likely
-non-viable for this integration pattern.
+unauthenticated API access (`403 Forbidden` with `{"message": "Not authorized for PCSX"}`).
+However, the platform exposes a complete sitemap (`/careers/sitemap.xml`) and
+embeds `application/ld+json` (`JobPosting`) on every job page. This allows a robust
+two-stage integration without needing a direct JSON API.
