@@ -82,6 +82,7 @@ Your skills list, salary range, target roles/locations, resume file path, AI pro
 - *Input:* Config sheet (target roles, salary, location)
 - *Process:* Calls Greenhouse/Lever/Adzuna/JSearch APIs, dedupes by job_id
 - *Output:* New rows in `Jobs` sheet, status `New`
+- ***Paused* (Aug 14, 2026):** `scan.yml`'s schedule trigger was removed — real usage showed the broad scan mostly surfacing low-value postings from small companies, not worth the noise. `workflow_dispatch` still allows a manual run. M6 (Company Watchlist) is the active discovery channel now; this can be re-enabled by restoring `scan.yml`'s `schedule:` block if the calculus changes.
 
 **M2 — Resume Parser** *(runs once, or whenever you update your resume)*
 - *Trigger:* Manual, when resume changes

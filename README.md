@@ -75,13 +75,21 @@ Two independent halves run on two independent schedules:
 
 ## Job Scanner
 
+> **Currently paused (Aug 14, 2026).** After actually using this system,
+> the broad scan was mostly surfacing low-value postings from small
+> companies — not worth the noise. [Company Watchlist](#company-watchlist)
+> is the active discovery mechanism now. This is a pause, not a removal:
+> `scan.yml`'s schedule trigger was removed but `workflow_dispatch` still
+> lets you run it manually, and everything below still describes exactly
+> how it behaves if/when it's turned back on.
+
 **What it does:** Continuously searches Greenhouse, Lever, Adzuna, and
 JSearch for postings matching your target roles and locations, and adds
 every new one to the `Jobs` tab.
 
-**How it runs:** Automatically, via GitHub Actions, roughly every 30
-minutes (`.github/workflows/scan.yml`). You never need to touch it. To run
-it yourself for testing:
+**How it runs (when active):** Automatically, via GitHub Actions, roughly
+every 30 minutes (`.github/workflows/scan.yml`). You never need to touch
+it. To run it yourself for testing:
 
 ```bash
 python scripts/run_job_scan.py

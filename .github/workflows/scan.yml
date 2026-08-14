@@ -1,13 +1,12 @@
 name: Scan, Score, Digest
 
 on:
-  schedule:
-    # M1/M4/M5, per DESIGN.md/BUILD_PLAN.md. Runs on the hour and half-hour;
-    # watchlist.yml is offset (:05/:15/...) so the two workflows don't both
-    # write to the Jobs sheet at the same instant. GitHub Actions cron has
-    # its own queuing delay (often a few minutes) on top of this, so treat
-    # this as "roughly every 30 min," not exact.
-    - cron: "0,30 * * * *"
+  # PAUSED (Aug 14, 2026) — the broad scan (M1) was surfacing too many
+  # low-value postings from small companies to be useful; the Company
+  # Watchlist (watchlist.yml) is the active discovery channel now. This is
+  # a pause, not a removal — re-add the schedule block below to resume:
+  #   schedule:
+  #     - cron: "0,30 * * * *"
   workflow_dispatch: {}
 
 jobs:

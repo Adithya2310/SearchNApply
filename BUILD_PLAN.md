@@ -34,7 +34,9 @@ All 7 items done, committed, pushed to GitHub, and confirmed running unattended:
 
 **Original Phase 1 (M1 broad job aggregation) turned out to be lower value than expected** — Naukri/LinkedIn already cover broad discovery well. The real gap this system should fill is different: **actively monitoring specific target companies and turning a match into a filled, ready-to-submit application with minimal manual effort.**
 
-This does not throw away Phase 1 — M6 (Watchlist), the Sheets backbone, resume_profile.json, and M4 scoring are all direct dependencies of the new priority. M1 keeps running (it's free, already live) but is deprioritized as a source of value.
+This does not throw away Phase 1 — M6 (Watchlist), the Sheets backbone, resume_profile.json, and M4 scoring are all direct dependencies of the new priority.
+
+**M1 fully paused (Aug 14, 2026):** after actually using the system, the broad scan's results were mostly low-value postings from small companies — not just lower-value than the Watchlist, but not useful enough to keep running. `scan.yml`'s schedule trigger was removed (`workflow_dispatch` still works for a manual run). **`watchlist.yml`/M6 is now the sole active discovery channel.** M1's code is untouched and easy to re-enable (re-add the `schedule:` block) if this changes.
 
 **New centerpiece: M15 — Application Kit Generator** (redesigned Aug 13, 2026 — see below; the original login-automation spec was scrapped before any of it was built).
 
