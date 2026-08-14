@@ -309,10 +309,12 @@ def test_location_matches_target_directly():
     assert score_location(job, _base_config(target_locations="Bangalore,Pune")) == 1.0
 
 
-def test_location_no_match_gets_low_but_nonzero_score():
-    job = _job(location="Berlin, Germany")
-    score = score_location(job, _base_config(target_locations="Bangalore,Pune"))
-    assert 0.0 < score < 0.6
+def test_location_no_match_gets_zero_score():
+    score = score_location(
+        {"location": "Seattle, WA"},
+        {"target_locations": "San Francisco, New York"},
+    )
+    assert score == 0.0
 
 
 def test_remote_job_matches_when_remote_ok():

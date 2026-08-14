@@ -3,7 +3,7 @@ import re
 from .constants import UNKNOWN
 
 REMOTE_KEYWORDS = ("remote", "anywhere", "distributed", "work from home", "wfh")
-NO_MATCH_SCORE = 0.2
+NO_MATCH_SCORE = 0.0
 SAME_COUNTRY_SCORE = 0.6
 
 # Confirmed against real scanned jobs: "Remote within United States" and
@@ -28,7 +28,6 @@ def _is_remote(job_row):
         [
             job_row.get("location", "") or "",
             job_row.get("title", "") or "",
-            job_row.get("description_raw", "") or "",
         ]
     ).lower()
     return any(kw in haystack for kw in REMOTE_KEYWORDS)
