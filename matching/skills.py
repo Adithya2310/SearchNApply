@@ -136,14 +136,6 @@ def score_skills(job_row, vocabulary, saturation=DEFAULT_SATURATION):
     title_len = len(title_lower)
     combined = f"{title_lower} {description.lower()}"
 
-    source = str(job_row.get("source") or "").strip().lower()
-    is_watchlist = source in ("workday", "custom-scrape")
-    if is_watchlist:
-        if _is_technical_role(title_lower) and not _requires_senior_experience(combined):
-            return SkillResult(1.0, ["Technical Role (1-3 yrs)"])
-        else:
-            return SkillResult(0.0, [])
-
     matched = []
     raw_total = 0.0
     for canonical, weight in vocabulary.items():
