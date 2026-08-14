@@ -112,6 +112,16 @@ class SkillResult:
         self.matched = matched
 
 
+TECHNICAL_KEYWORDS = {"software", "engineer", "developer", "data", "ai", "cloud", "programmer", "architect", "machine learning", "ml"}
+
+def _is_technical_role(title_lower):
+    return any(kw in title_lower for kw in TECHNICAL_KEYWORDS)
+
+def _requires_senior_experience(text_lower):
+    # Matches "4+ years", "5-7 years", "10 years" etc.
+    return bool(re.search(r'\b([4-9]|1[0-9])\s*\+?\s*(?:-\s*[0-9]+\s*)?years?\b', text_lower))
+
+
 def score_skills(job_row, vocabulary, saturation=DEFAULT_SATURATION):
     """Skill-overlap dimension. UNKNOWN only when the job has no text at
     all; otherwise always a real score (0.0 included) since "no skills
@@ -125,6 +135,14 @@ def score_skills(job_row, vocabulary, saturation=DEFAULT_SATURATION):
     title_lower = title.lower()
     title_len = len(title_lower)
     combined = f"{title_lower} {description.lower()}"
+
+    source = str(job_row.get("source") or "").strip().lower()
+    is_watchlist = source in ("workday", "custom-scrape")
+    if is_watchlist:
+        if _is_technical_role(title_lower) and not _requires_senior_experience(combined):
+            return SkillResult(1.0, ["Technical Role (1-3 yrs)"])
+        else:
+            return SkillResult(0.0, [])
 
     matched = []
     raw_total = 0.0
