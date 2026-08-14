@@ -1,5 +1,5 @@
 DEFAULTS = {
-    "match_threshold": 75.0,
+    "match_threshold": 40.0,
     "weight_skill": 0.60,
     "weight_salary": 0.15,
     "weight_location": 0.25,
