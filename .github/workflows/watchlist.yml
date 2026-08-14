@@ -6,7 +6,7 @@ on:
     # broad search"). Offset from scan.yml's :00/:30 so the two workflows
     # don't both write to the Jobs sheet at the same instant — see the
     # comment there. GitHub Actions cron delay applies here too.
-    - cron: "5,15,25,35,45,55 * * * *"
+    - cron: "5,15,25,35,45,55 0-17 * * *"
   workflow_dispatch: {}
 
 jobs:

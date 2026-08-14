@@ -1,8 +1,8 @@
 from .constants import UNKNOWN
 from .location import score_location
 from .salary import score_salary
-from .skills import score_skills
-
+from ai_provider import provider
+from .skills import score_skills, SkillResult
 
 def score_skills_dispatch(job_row, vocabulary, config):
     """AI hook point (M14) — scoped to the skill dimension only; salary and
@@ -14,6 +14,27 @@ def score_skills_dispatch(job_row, vocabulary, config):
     failure rather than raise — this stub already satisfies that by simply
     not having a failing path yet.
     """
+    source = str(job_row.get("source") or "").strip().lower()
+    is_watchlist = source in ("workday", "custom-scrape")
+
+    if is_watchlist and config.get("ai_provider") in ("gemini", "claude"):
+        title = (job_row.get("title") or "").strip()
+        desc = (job_row.get("description_raw") or "").strip()
+        prompt = (
+            f"Analyze this job posting:\n\nTitle: {title}\n\nDescription: {desc}\n\n"
+            "Question 1: Is this a technical role (e.g. software engineer, data, AI, cloud)?\n"
+            "Question 2: Is the experience requirement suitable for a candidate with 1-3 years of experience? (i.e. it does NOT explicitly require 4+ years of senior experience).\n"
+            "If the answer to BOTH questions is yes, output EXACTLY the word 'YES'. Otherwise, output 'NO'."
+        )
+        try:
+            answer = provider.generate(prompt, system="You are an expert technical recruiter.", config=config).strip().lower()
+            if "yes" in answer:
+                return SkillResult(1.0, ["Technical Role (1-3 yrs) via AI"])
+            else:
+                return SkillResult(0.0, [])
+        except Exception:
+            pass # Fall back to rule-based
+
     return score_skills(job_row, vocabulary, saturation=config["skill_saturation"])
 
 
