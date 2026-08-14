@@ -145,13 +145,13 @@ Your skills list, salary range, target roles/locations, resume file path, AI pro
 - *Output:* Fills `hr_name`, `hr_email`, `hr_linkedin` in `Applications`; adds/updates `Contacts` row
 
 **M9 — Resume Tailoring Engine** *(Gemini by default, swappable — see M14)*
-- *Trigger:* Same "Process" click in M7 (dashboard not built yet — for now, `scripts/tailor_resume.py --job-id <id>` or `--jd-file <path>`)
+- *Trigger:* The Apply Kit tab in the M7 dashboard (Aug 14, 2026 — folded in so every per-application action lives in one place), or standalone via `scripts/tailor_resume.py --job-id <id>` / `--jd-file <path>` for automation/testing without opening Streamlit. Both entry points share the same underlying functions (`resume_tailor/gaps.py`, `resume_tailor/tailor.py`, `resume_tailor/output.py`) — only the interactive-loop-vs-widgets layer differs.
 - *Input:* Job description + `resume_profile.json` + `Config.ai_provider`/`ai_model`
 - *Process, three steps, not a single one-shot generate:*
   1. **Gap detection** (`resume_tailor/gaps.py`) — one AI call extracts the JD's required skills as a list; diffed (via `matching/aliases.canonicalize`, same alias-collapsing used for scoring) against everything already in `resume_profile.json` to find genuine gaps.
   2. **Interactive resolution** — for each gap skill, the user is asked: already know it (add to profile + resume), planning to learn it (noted, not added to either), or skip. Confirmed skills are merged into `resume_profile.json` immediately — this *is* the approval step, same principle as M3's diff-approval, just triggered from M9 instead of the chat box.
   3. **Tailoring** (`resume_tailor/tailor.py`) — a second AI call rewrites/reorders resume content against the JD, given the now-current profile and the resolved skill list as keywords to weave in.
-- *Output:* An ATS-friendly (plain text, standard section headers, no tables/graphics) tailored resume file under `tailored_resumes/`, shown to the user for review before being written; filename logged in `Applications.resume_version_used` if a linked Applications row already exists.
+- *Output:* An ATS-friendly (plain text, standard section headers, no tables/graphics) tailored resume file under `tailored_resumes/` (`resume_tailor/output.py`'s `save_tailored_resume`, shared by both entry points), shown to the user for review/edit before being written; filename logged in `Applications.resume_version_used` — always available from the Apply Kit tab (it's already scoped to one Applications row), only conditional in the CLI path when no linked Applications row exists yet.
 
 **M10 — Outreach Generator** *(Opus)*
 - *Trigger:* Same "Process" click

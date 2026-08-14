@@ -274,6 +274,14 @@ Role Applying For               Backend Engineer
 Job Posting URL                 https://acme.example/careers/123
 ```
 
+**Resume Tailor** — rewrite your resume for this specific job, right here.
+See the full [Resume Tailor](#resume-tailor) section below for how the
+three-step flow (find gaps → resolve each → generate) works; the Apply Kit
+tab and the standalone `scripts/tailor_resume.py` CLI are two entry points
+into the exact same underlying logic, so the outcome is identical either
+way. Saving here updates this application's `resume_version_used`
+automatically — no need to note the filename yourself.
+
 **Interest Pitch** — click **Generate pitch** for a short, AI-written
 "why I'm interested in this role" blurb, grounded strictly in your real
 experience (it will never claim a skill or project that isn't actually in
@@ -366,22 +374,29 @@ to fit it — in three steps, not one blind generate:
 
 You review the full draft before anything is saved.
 
-**How to run it:**
+**Two ways to run it** — same underlying logic either way, just a
+different front end:
 
-```bash
-# Against a real Jobs row:
-python scripts/tailor_resume.py --job-id <job_id>
+- **In the Dashboard** — the [Apply Kit](#apply-kit) tab: **Find skill
+  gaps**, resolve each one with a radio button, **Generate tailored
+  resume**, edit the draft inline if you want, **Save**. The application's
+  `resume_version_used` is filled in automatically since Apply Kit is
+  already scoped to one `Applications` row.
+- **From the command line** — useful for scripting, or tailoring against a
+  job that isn't in the Sheet yet:
 
-# Against a job description you have as a local file:
-python scripts/tailor_resume.py --jd-file path/to/description.txt
-```
+  ```bash
+  # Against a real Jobs row:
+  python scripts/tailor_resume.py --job-id <job_id>
 
-Output is saved to `tailored_resumes/<company>_<role>_<date>.txt`. If the
-job is already linked to an `Applications` row, that row's
-`resume_version_used` is filled in automatically.
+  # Against a job description you have as a local file:
+  python scripts/tailor_resume.py --jd-file path/to/description.txt
+  ```
 
-> Not yet wired into the Dashboard — for now it's a command-line step. See
-> [Future Scope](#future-scope).
+  Output is saved to `tailored_resumes/<company>_<role>_<date>.txt`. If the
+  job is already linked to an `Applications` row, that row's
+  `resume_version_used` is filled in automatically; otherwise you'll be
+  told the filename to record yourself once you log the application.
 
 ---
 
@@ -434,15 +449,12 @@ support it) but not yet built:
 - **Claude as a live AI provider** — the code path exists (`ai_provider/claude.py`)
   and mirrors Gemini's interface exactly; it just hasn't been exercised
   against a real `ANTHROPIC_API_KEY` yet.
-- **Resume Tailor inside the Dashboard** — currently a command-line step;
-  folding it into the Apply Kit tab would mean one place for every
-  per-application action instead of two.
 - **Expanding the Watchlist** — the dispatch architecture already supports
   adding companies with zero code changes (Greenhouse/Lever/Workday) or
   one new file (custom-scrape); five companies (Oracle, Qualcomm, FM
   Global, Microsoft, Google) are already in the `Watchlist` tab as
   `inactive` placeholders with their real careers URLs recorded in
   `BUILD_PLAN.md`, waiting on their custom scrapers to be written.
-- **Automated tests as living documentation** — 132 tests currently cover
+- **Automated tests as living documentation** — 136 tests currently cover
   every feature above; this number will keep growing alongside new work,
   and is the fastest way to confirm nothing regressed after a change.

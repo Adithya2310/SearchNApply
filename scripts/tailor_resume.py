@@ -9,9 +9,7 @@ resume — see resume_tailor/gaps.py and DESIGN.md M9.
 
 import argparse
 import json
-import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -20,11 +18,10 @@ from dotenv import load_dotenv
 
 from matching.config import load_config
 from resume_tailor.gaps import find_skill_gaps
+from resume_tailor.output import save_tailored_resume
 from resume_tailor.profile_updates import add_confirmed_skills
 from resume_tailor.tailor import tailor_resume
 from sheets.client import SheetsClient
-
-OUTPUT_DIR = "tailored_resumes"
 
 
 def _load_resume_profile(path):
@@ -47,10 +44,6 @@ def _prompt_skill_gap(skill):
         if answer in ("1", "2", "3"):
             return answer
         print("  Please enter 1, 2, or 3.")
-
-
-def _safe_filename_part(value):
-    return "".join(c if c.isalnum() else "_" for c in value).strip("_")
 
 
 def main():
@@ -119,13 +112,7 @@ def main():
         print("Discarded — nothing written.")
         return
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    safe_company = _safe_filename_part(company) or "company"
-    safe_title = _safe_filename_part(title) or "role"
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d")
-    filename = f"{OUTPUT_DIR}/{safe_company}_{safe_title}_{timestamp}.txt"
-    with open(filename, "w") as f:
-        f.write(draft)
+    filename = save_tailored_resume(draft, company, title)
     print(f"Saved: {filename}")
 
     if args.job_id:
@@ -137,8 +124,7 @@ def main():
         else:
             print(
                 "No Applications row is linked to this job yet — log it manually "
-                "(or via the dashboard once M7 exists) and record this filename "
-                "as resume_version_used."
+                "(or via the dashboard) and record this filename as resume_version_used."
             )
 
 

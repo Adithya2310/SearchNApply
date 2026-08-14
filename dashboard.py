@@ -26,7 +26,10 @@ from outreach.generate import generate_email_draft, generate_linkedin_note
 from profile_updater.apply import add_bullet_to_project, add_bullet_to_work_experience, add_new_project
 from profile_updater.extract import extract_update
 from profile_updater.log import append_log_entry
+from resume_tailor.gaps import find_skill_gaps
+from resume_tailor.output import save_tailored_resume
 from resume_tailor.profile_updates import add_confirmed_skills
+from resume_tailor.tailor import tailor_resume as generate_tailored_resume
 from sheets.client import SheetsClient
 from sheets.schema import SHEETS
 
@@ -241,6 +244,9 @@ def render_apply_kit_tab(client):
     )
 
     st.divider()
+    render_resume_tailor_section(client, app_row, resume_profile, job_description, config)
+
+    st.divider()
     st.markdown("**Why I'm interested (AI-generated, review before pasting)**")
 
     pitch_key = f"pitch_{app_row['app_id']}"
@@ -254,6 +260,70 @@ def render_apply_kit_tab(client):
 
     st.divider()
     render_outreach_section(client, app_row, resume_profile, job_description, config)
+
+
+def render_resume_tailor_section(client, app_row, resume_profile, job_description, config):
+    st.markdown("**Resume Tailor — rewrite your resume for this specific job**")
+    if not job_description:
+        st.info("No job description linked to this application — can't tailor a resume for it yet.")
+        return
+
+    app_id = app_row["app_id"]
+    gaps_key = f"tailor_gaps_{app_id}"
+
+    if st.button("Find skill gaps", key=f"find_gaps_{app_id}"):
+        with st.spinner("Checking your profile against this job description..."):
+            st.session_state[gaps_key] = find_skill_gaps(job_description, resume_profile, config)
+
+    gaps = st.session_state.get(gaps_key)
+    if gaps is None:
+        return
+
+    answers = {}
+    if gaps:
+        st.caption("This job asks for skills not yet in your profile — resolve each before generating:")
+        for skill in gaps:
+            answers[skill] = st.radio(
+                skill,
+                options=["Skip", "I know this already", "I'll learn it (project planned)"],
+                key=f"tailor_gap_{app_id}_{skill}",
+                horizontal=True,
+            )
+    else:
+        st.caption("No skill gaps found — your profile already covers what this job asks for.")
+
+    if st.button("Generate tailored resume", key=f"generate_tailored_{app_id}"):
+        confirmed_skills = [s for s, a in answers.items() if a == "I know this already"]
+        learning_skills = [s for s, a in answers.items() if a == "I'll learn it (project planned)"]
+        skipped = [s for s in gaps if s not in confirmed_skills and s not in learning_skills]
+
+        if confirmed_skills:
+            add_confirmed_skills(resume_profile, confirmed_skills)
+            _save_resume_profile(client, resume_profile)
+            st.success(f"Added to your profile: {', '.join(confirmed_skills)}")
+        if learning_skills:
+            st.info(f"Noted as learning goals (not added to the resume yet): {', '.join(learning_skills)}")
+
+        keywords = confirmed_skills + skipped
+        with st.spinner("Generating tailored, ATS-friendly resume..."):
+            draft = generate_tailored_resume(resume_profile, job_description, keywords, config)
+        st.session_state[f"tailor_draft_{app_id}"] = draft
+
+    draft_key = f"tailor_draft_{app_id}"
+    if draft_key in st.session_state:
+        edited_draft = st.text_area(
+            "Tailored resume draft (edit before saving if you want)",
+            value=st.session_state[draft_key],
+            height=400,
+            key=f"{draft_key}_text",
+        )
+        if st.button("Save tailored resume", key=f"save_tailored_{app_id}"):
+            filename = save_tailored_resume(edited_draft, app_row.get("company", ""), app_row.get("role", ""))
+            client.update_row(
+                "Applications", "app_id", app_id, {"resume_version_used": filename, "last_update_date": _today()}
+            )
+            st.success(f"Saved: {filename}")
+            st.rerun()
 
 
 def _append_outreach_message(client, app_row, new_message):
