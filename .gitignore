@@ -9,3 +9,11 @@ BUILD_PLAN*
 tailored_resumes/
 profile_updates_log.jsonl
 .playwright-mcp/
+node_modules/
+package*.json
+/test_*.py
+/test_*.js
+/run_tests.py
+/live_verify.py
+/cookies.txt
+/myenv/
