@@ -68,10 +68,31 @@ def score_job(job_row, vocabulary, config):
     salary_floor, no target_locations) degrades cleanly to pure
     skill-overlap ranking instead of every job clustering around a
     meaningless midpoint.
+
+    For watchlist jobs (workday / custom-scrape sources), location acts as
+    a hard gate: if target_locations is configured and the job doesn't
+    match any of them, the score is forced to 0.  These companies post
+    hundreds of openings worldwide; without this gate, foreign listings
+    with good skill overlap leak through (e.g. "Italy - Milan" scoring 71
+    on skill alone).
     """
     skill_result = score_skills_dispatch(job_row, vocabulary, config)
     salary_score = score_salary(job_row, config)
     location_score = score_location(job_row, config)
+
+    # Hard location gate for watchlist jobs — if location is configured and
+    # the job doesn't match, zero it out immediately.
+    source = str(job_row.get("source") or "").strip().lower()
+    is_watchlist = source.startswith("watchlist:") or source in ("workday", "custom-scrape")
+    has_location_targets = bool((config.get("target_locations") or "").strip())
+    if is_watchlist and has_location_targets and location_score is not UNKNOWN and location_score == 0.0:
+        return {
+            "match_score": 0,
+            "skill_score": skill_result.score,
+            "salary_score": salary_score,
+            "location_score": location_score,
+            "matched_skills": skill_result.matched,
+        }
 
     dims = {
         "skill": (skill_result.score, config["weight_skill"]),

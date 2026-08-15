@@ -105,16 +105,19 @@ def fetch_job_detail(url):
     description = strip_html(data.get("description", ""))
 
     loc_data = data.get("jobLocation", {})
+    if isinstance(loc_data, list):
+        loc_data = loc_data[0] if loc_data else {}
     address = loc_data.get("address", {})
 
     loc_parts = []
     if isinstance(address, dict):
-        if address.get("addressLocality"):
-            loc_parts.append(address["addressLocality"])
-        if address.get("addressRegion"):
-            loc_parts.append(address["addressRegion"])
-        if address.get("addressCountry"):
-            loc_parts.append(address["addressCountry"])
+        for k in ['addressLocality', 'addressRegion', 'addressCountry']:
+            val = address.get(k)
+            if val:
+                if isinstance(val, dict):
+                    val = val.get('name', '')
+                if val:
+                    loc_parts.append(str(val))
 
     location = ", ".join(loc_parts)
 
