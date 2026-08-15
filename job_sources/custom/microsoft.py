@@ -105,8 +105,12 @@ def fetch_jobs(identifier, company_name=None, target_roles=None, existing_job_id
             if isinstance(addr, dict):
                 parts = []
                 for k in ['addressLocality', 'addressRegion', 'addressCountry']:
-                    if addr.get(k):
-                        parts.append(addr[k])
+                    val = addr.get(k)
+                    if val:
+                        if isinstance(val, dict):
+                            val = val.get('name', '')
+                        if val:
+                            parts.append(str(val))
                 if parts:
                     location = ", ".join(parts)
         elif isinstance(job_loc, list) and len(job_loc) > 0:
@@ -114,8 +118,12 @@ def fetch_jobs(identifier, company_name=None, target_roles=None, existing_job_id
             if isinstance(addr, dict):
                 parts = []
                 for k in ['addressLocality', 'addressRegion', 'addressCountry']:
-                    if addr.get(k):
-                        parts.append(addr[k])
+                    val = addr.get(k)
+                    if val:
+                        if isinstance(val, dict):
+                            val = val.get('name', '')
+                        if val:
+                            parts.append(str(val))
                 if parts:
                     location = ", ".join(parts)
 
