@@ -106,17 +106,101 @@ def mark_ignored(client, job_row):
     client.update_row("Jobs", "job_id", job_row["job_id"], {"status": "Ignored"})
 
 
+def _unique_sorted(rows, key, transform=None):
+    """Return sorted unique non-empty values for a field across all rows."""
+    seen = set()
+    for r in rows:
+        val = (r.get(key) or "").strip()
+        if transform:
+            val = transform(val)
+        if val:
+            seen.add(val)
+    return sorted(seen)
+
+
+def _source_label(raw_source):
+    """Normalise watchlist:Company → Company, others as-is."""
+    if raw_source.startswith("watchlist:"):
+        return raw_source[len("watchlist:"):]
+    return raw_source
+
+
 def render_review_tab(client):
     st.subheader("Review new matches")
     rows = client.get_rows("Jobs")
 
-    status_filter = st.multiselect(
-        "Show statuses", JOBS_STATUSES, default=["New", "Reviewed"], key="review_status_filter"
-    )
-    visible = [r for r in rows if r.get("status") in status_filter]
+    # ── build option lists from actual data ──────────────────────────────────
+    all_locations = _unique_sorted(rows, "location")
+    all_companies = _unique_sorted(rows, "company")
+    all_sources   = sorted({
+        _source_label((r.get("source") or "").strip())
+        for r in rows
+        if (r.get("source") or "").strip()
+    })
+
+    # ── filter controls ───────────────────────────────────────────────────────
+    # Row 1: status + min score
+    f_col1, f_col2, f_col3 = st.columns([3, 3, 2])
+    with f_col1:
+        status_filter = st.multiselect(
+            "Status",
+            options=JOBS_STATUSES,
+            default=["New", "Reviewed"],
+            key="review_status_filter",
+        )
+    with f_col2:
+        company_filter = st.multiselect(
+            "Company",
+            options=all_companies,
+            default=[],
+            placeholder="All companies",
+            key="review_company_filter",
+        )
+    with f_col3:
+        min_score = st.number_input(
+            "Min score",
+            min_value=0,
+            max_value=100,
+            value=0,
+            step=5,
+            key="review_min_score",
+        )
+
+    # Row 2: location + source
+    f_col4, f_col5 = st.columns(2)
+    with f_col4:
+        location_filter = st.multiselect(
+            "Location",
+            options=all_locations,
+            default=[],
+            placeholder="All locations",
+            key="review_location_filter",
+        )
+    with f_col5:
+        source_filter = st.multiselect(
+            "Source",
+            options=all_sources,
+            default=[],
+            placeholder="All sources",
+            key="review_source_filter",
+        )
+
+    # ── apply filters ─────────────────────────────────────────────────────────
+    visible = rows
+    if status_filter:
+        visible = [r for r in visible if r.get("status") in status_filter]
+    if company_filter:
+        visible = [r for r in visible if (r.get("company") or "").strip() in company_filter]
+    if location_filter:
+        visible = [r for r in visible if (r.get("location") or "").strip() in location_filter]
+    if source_filter:
+        visible = [r for r in visible if _source_label((r.get("source") or "").strip()) in source_filter]
+    if min_score > 0:
+        visible = [r for r in visible if _safe_int(r.get("match_score")) >= min_score]
+
     visible.sort(key=lambda r: -_safe_int(r.get("match_score")))
 
-    st.caption(f"{len(visible)} job(s)")
+    st.caption(f"{len(visible)} job(s) shown")
 
     for row in visible:
         with st.container(border=True):
@@ -125,7 +209,8 @@ def render_review_tab(client):
                 st.markdown(f"**{row.get('title', '')}** — {row.get('company', '')}")
                 st.caption(
                     f"{row.get('location') or 'location n/a'} · "
-                    f"score {row.get('match_score') or '?'} · status {row.get('status', '')}"
+                    f"score {row.get('match_score') or '?'} · status {row.get('status', '')} · "
+                    f"source {_source_label((row.get('source') or '').strip())}"
                 )
                 if row.get("url"):
                     st.markdown(f"[View posting]({row['url']})")
@@ -140,6 +225,7 @@ def render_review_tab(client):
                 if st.button("Ignore", key=f"ignore_{row['job_id']}"):
                     mark_ignored(client, row)
                     st.rerun()
+
 
 
 def render_tracker_tab(client):
