@@ -6,7 +6,9 @@ on:
     # broad search"). Offset from scan.yml's :00/:30 so the two workflows
     # don't both write to the Jobs sheet at the same instant — see the
     # comment there. GitHub Actions cron delay applies here too.
-    - cron: "5,15,25,35,45,55 * * * *"
+    # Hours 0-17 UTC ≈ 5:30 AM – 11:30 PM IST — halted overnight to save
+    # Actions minutes and avoid spam.
+    - cron: "5,15,25,35,45,55 0-17 * * *"
   workflow_dispatch: {}
 
 jobs:
@@ -17,6 +19,7 @@ jobs:
       GOOGLE_SHEETS_SPREADSHEET_ID: ${{ secrets.GOOGLE_SHEETS_SPREADSHEET_ID }}
       GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
       GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
