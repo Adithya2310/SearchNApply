@@ -36,9 +36,11 @@ All keys are read from environment variables — see `.env.example` for exact na
 | Secret name | Value |
 |---|---|
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | The **full contents** of the service account JSON key file (not a path — paste the whole JSON as the secret value). The workflow writes it to `credentials/service_account.json` at runtime. |
+| `RESUME_PROFILE_JSON` | The **full contents** of your local `resume_profile.json` (not a path). `resume_profile.json` is gitignored (personal data, not committed), so a fresh Actions checkout doesn't have it — the workflow writes it to `resume_profile.json` at runtime, same pattern as the service account JSON above. Required by both workflows (M4/M6 both read it). |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | Same value as the local `.env` |
 | `GMAIL_ADDRESS` | Same value as the local `.env` |
 | `GMAIL_APP_PASSWORD` | Same value as the local `.env` |
+| `GEMINI_API_KEY` | Same value as the local `.env` — watchlist.yml's AI-assisted scoring needs it |
 | `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` | scan.yml only (M1's Adzuna integration) |
 | `RAPIDAPI_JSEARCH_KEY` | scan.yml only (M1's JSearch integration) |
 

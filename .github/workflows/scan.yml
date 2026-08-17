@@ -38,6 +38,14 @@ jobs:
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
 
+      - name: Write resume profile
+        # resume_profile.json is gitignored (personal data, not committed —
+        # see 138c85a) so a fresh checkout doesn't have it; M4 below needs
+        # it. Recreated from a secret the same way service_account.json is.
+        run: printf '%s' "$RESUME_PROFILE_JSON" > resume_profile.json
+        env:
+          RESUME_PROFILE_JSON: ${{ secrets.RESUME_PROFILE_JSON }}
+
       - name: M1 — Job Aggregator
         run: python scripts/run_job_scan.py
 
