@@ -1,0 +1,71 @@
+{
+  "name": "Jane Doe",
+  "contact": {
+    "email": "adithyanandi099@gmail.com",
+    "phone": "+91 6362223700",
+    "github": "https://github.com/Adithya2310",
+    "linkedin": "https://www.linkedin.com/in/adithya-ng-baba34226",
+    "x": "https://x.com/_Adithya_n_g"
+  },
+  "skills": [
+    "Python",
+    "JavaScript",
+    "AWS",
+    "Docker"
+  ],
+  "work_experience": [
+    {
+      "company": "Tech Corp",
+      "title": "Software Engineer",
+      "dates": "2020 - Present",
+      "bullets": [
+        "Developed scalable microservices.",
+        "Reduced latency by 40%."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "school": "University of Technology",
+      "degree": "B.S. Computer Science",
+      "dates": "2016 - 2020"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Open Source Analytics",
+      "description": "A data visualization dashboard.",
+      "bullets": [
+        "Built using React and Node.js."
+      ]
+    }
+  ],
+  "achievements": [
+    {
+      "title": "ETHIndia 2024 Winner",
+      "description": "Secured 2nd Place in both Coinbase and Base tracks for CoinSwipe, a project utilizing the Coinbase Development Platform.",
+      "link": "https://devfolio.co/projects/coin-swipe-bb75"
+    },
+    {
+      "title": "ETHIndia 2023 Winner",
+      "description": "Awarded \"Best App on OKX X1 Chain\" for Derent, a decentralized multi-chain renting platform.",
+      "link": "https://devfolio.co/projects/derent-e262"
+    },
+    {
+      "title": "Research Publication (IEEE)",
+      "description": "Co-authored \"Karna\", a paper regarding DAO-based authentication for crowdfunding platforms and presented it at IISc.",
+      "link": "https://ieeexplore.ieee.org/document/10677068/"
+    },
+    {
+      "title": "Arweave India Cohort 1 Winner",
+      "description": "Selected for building BetterIdea, an online IDE designed to streamline smart contract deployment on the Arweave network.",
+      "link": null
+    }
+  ],
+  "email": "jane.doe@example.com",
+  "phone": "+1 555-0100",
+  "linkedin": "linkedin.com/in/janedoe",
+  "github": "github.com/janedoe",
+  "location": "San Francisco, CA",
+  "summary": "A brief professional summary..."
+}
